@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Cozy home</title>
+  <desc id="desc">A small welcoming house with a warm window and leaf.</desc>
+  <path d="M21 43C13 59 17 93 33 106c15 13 61 9 75-9 13-18 9-50-7-70C84 10 48 11 31 27c-5 4-8 10-10 16Z" fill="#fbf6ef" stroke="#e8d9cc" stroke-width="1.5"/>
+  <g stroke="#6c5b4b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m33 60 31-27 31 27" fill="none"/>
+    <path d="M39 57v42h50V57" fill="#f5e5d6"/>
+    <path d="M57 99V72h14v27" fill="#c9d8c4"/>
+    <path d="M44 67h8v8h-8zM77 67h7v8h-7z" fill="#e8c78d" stroke-width="2.5"/>
+  </g>
+  <path d="M34 99c-7-10-5-17 2-18 5 4 5 11-2 18Z" fill="#9eba9d" stroke="#52765e" stroke-width="2"/>
+</svg>

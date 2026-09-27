@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">One small step</title>
+  <desc id="desc">Three ascending steps lead to a small shining star.</desc>
+  <path d="M21 43C13 59 17 93 33 106c15 13 61 9 75-9 13-18 9-50-7-70C84 10 48 11 31 27c-5 4-8 10-10 16Z" fill="#fbf6ef" stroke="#e8d9cc" stroke-width="1.5"/>
+  <g stroke="#466b53" stroke-width="3" stroke-linejoin="round">
+    <path d="M31 78h23v17H31z" fill="#dbe8d9"/>
+    <path d="M54 65h23v30H54z" fill="#bed3bb"/>
+    <path d="M77 52h20v43H77z" fill="#9eba9d"/>
+  </g>
+  <path d="M35 95h67" fill="none" stroke="#466b53" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="m88 27 2.8 7.4 7.4 2.8-7.4 2.8-2.8 7.4-2.8-7.4-7.4-2.8 7.4-2.8Z" fill="#c59b65"/>
+</svg>

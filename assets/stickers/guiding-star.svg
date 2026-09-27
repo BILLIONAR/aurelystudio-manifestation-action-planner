@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Guiding star</title>
+  <desc id="desc">A golden four-point star surrounded by smaller lights.</desc>
+  <path d="M21 43C13 59 17 93 33 106c15 13 61 9 75-9 13-18 9-50-7-70C84 10 48 11 31 27c-5 4-8 10-10 16Z" fill="#fbf6ef" stroke="#e8d9cc" stroke-width="1.5"/>
+  <path d="m64 34 8 22 22 8-22 8-8 22-8-22-22-8 22-8Z" fill="#e8c78d" stroke="#a87946" stroke-width="3.2" stroke-linejoin="round"/>
+  <path d="m92 31 2 5 5 2-5 2-2 5-2-5-5-2 5-2ZM36 80l1.7 4.3L42 86l-4.3 1.7L36 92l-1.7-4.3L30 86l4.3-1.7Z" fill="#b47a65"/>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Open heart</title>
+  <desc id="desc">A soft terracotta heart with three small rays.</desc>
+  <path d="M21 43C13 59 17 93 33 106c15 13 61 9 75-9 13-18 9-50-7-70C84 10 48 11 31 27c-5 4-8 10-10 16Z" fill="#fbf6ef" stroke="#e8d9cc" stroke-width="1.5"/>
+  <path d="M64 94 38 70c-10-10-9-24 1-30 10-7 21-3 25 6 4-9 15-13 25-6 10 6 11 20 1 30Z" fill="#f1d9d2" stroke="#a96356" stroke-width="3.6" stroke-linejoin="round"/>
+  <g fill="none" stroke="#c59b65" stroke-width="3.1" stroke-linecap="round">
+    <path d="M64 25v7M31 35l5 5M97 35l-5 5"/>
+  </g>
+</svg>

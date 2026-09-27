@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Sunrise intention</title>
+  <desc id="desc">A warm rising sun above a calm horizon.</desc>
+  <path d="M21 43C13 59 17 93 33 106c15 13 61 9 75-9 13-18 9-50-7-70C84 10 48 11 31 27c-5 4-8 10-10 16Z" fill="#fbf6ef" stroke="#e8d9cc" stroke-width="1.5"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M44 76a20 20 0 0 1 40 0" fill="#eedac0" stroke="#b47a65" stroke-width="3.6"/>
+    <path d="M32 77h64M41 86h46" stroke="#52765e" stroke-width="3.4"/>
+    <path d="M64 32v7M40 41l5 5M88 41l-5 5M30 59l7 2M98 59l-7 2" stroke="#c59b65" stroke-width="3.2"/>
+  </g>
+</svg>

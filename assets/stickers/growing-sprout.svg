@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Growing sprout</title>
+  <desc id="desc">A young plant with two leaves grows from the soil.</desc>
+  <path d="M21 43C13 59 17 93 33 106c15 13 61 9 75-9 13-18 9-50-7-70C84 10 48 11 31 27c-5 4-8 10-10 16Z" fill="#fbf6ef" stroke="#e8d9cc" stroke-width="1.5"/>
+  <g fill="none" stroke="#466b53" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M64 92V46"/>
+    <path d="M64 66c-6-15-17-22-30-20 1 17 10 27 30 25Z" fill="#b9d0b6"/>
+    <path d="M64 56c5-14 15-20 29-19-1 18-10 28-29 27Z" fill="#88aa8c"/>
+    <path d="M33 93c17-8 45-8 62 0M42 99h44" stroke="#a87761"/>
+  </g>
+</svg>
