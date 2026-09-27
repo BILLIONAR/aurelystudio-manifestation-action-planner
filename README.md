@@ -33,3 +33,5 @@ When the app is updated at the same site in the same browser, existing planner e
 - `assets/fonts/`: self-hosted fonts and their SIL Open Font License notices
 
 This is an app build, not a published Etsy listing. Describe only verified features and exact included files in any future listing.
+
+Release verification also covers offline data reset under a project subpath and the following-Monday deadline for Weekly Review actions.
