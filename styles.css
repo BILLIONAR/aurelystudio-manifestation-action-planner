@@ -558,6 +558,46 @@ html[data-theme]:not([data-theme="warm-sage"]) .sticker-option:nth-child(3n + 2)
 html[data-theme]:not([data-theme="warm-sage"]) .ladder > div:nth-child(even) { background: var(--sage-soft); }
 html[data-theme]:not([data-theme="warm-sage"]) .topbar { background: var(--canvas); }
 
+/* Pink Bloom colors every working surface, including the formerly white controls. */
+@media screen {
+  html[data-theme="pink-bloom"] { background: var(--canvas); }
+  html[data-theme="pink-bloom"] input:not([type="checkbox"]):not([type="radio"]),
+  html[data-theme="pink-bloom"] select,
+  html[data-theme="pink-bloom"] textarea,
+  html[data-theme="pink-bloom"] .preset-card,
+  html[data-theme="pink-bloom"] .habit-dot:not(.done):not(.active),
+  html[data-theme="pink-bloom"] .journey-day:not(.current) {
+    background: var(--paper); border-color: var(--line); color: var(--ink);
+  }
+  html[data-theme="pink-bloom"] .search-box input { background: transparent; }
+  html[data-theme="pink-bloom"] .field label,
+  html[data-theme="pink-bloom"] label.field { color: var(--ink); }
+  html[data-theme="pink-bloom"] input::placeholder,
+  html[data-theme="pink-bloom"] textarea::placeholder { color: var(--muted); }
+  html[data-theme="pink-bloom"] input:focus,
+  html[data-theme="pink-bloom"] select:focus,
+  html[data-theme="pink-bloom"] textarea:focus {
+    border-color: var(--sage) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sage) 18%, transparent);
+  }
+  html[data-theme="pink-bloom"] :focus-visible { outline-color: var(--sage); }
+  html[data-theme="pink-bloom"] ::selection { background: var(--sage-soft); color: var(--ink); }
+  html[data-theme="pink-bloom"] .affirmation-line,
+  html[data-theme="pink-bloom"] .vision-cell,
+  html[data-theme="pink-bloom"] .toast:not(.error),
+  html[data-theme="pink-bloom"] .btn-danger {
+    background: var(--sage-soft); border-color: var(--line); color: var(--ink);
+  }
+  html[data-theme="pink-bloom"] .goal-thumb {
+    background: linear-gradient(140deg, var(--paper), var(--sage-soft)); color: var(--sage);
+  }
+  html[data-theme="pink-bloom"] .ring {
+    background: conic-gradient(var(--ring-color) var(--progress, 0%), var(--line) 0);
+  }
+  html[data-theme="pink-bloom"] .empty-state svg { color: var(--sage); }
+}
+
+
 @media (max-width: 1280px) {
   .app-shell { grid-template-columns: 230px minmax(0, 1fr); }
   .sidebar { padding-right: 10px; padding-left: 10px; }
@@ -759,6 +799,8 @@ html[data-writing-font] .writing-input::placeholder { font-family: var(--font-bo
 .writing-font-control label span, .writing-font-control > span { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .01em; }
 .writing-font-control select { width: auto; max-width: 100%; min-width: 150px; min-height: 36px; padding: 6px 31px 6px 10px; border-radius: 9px; background: var(--paper); font-size: 12px; font-weight: 700; }
 .writing-font-control small { color: var(--muted); font-size: 10px; }
+.writing-font-control.compact { justify-content: flex-end; margin: 0 0 10px; }
+.writing-font-control.compact select { min-width: 135px; }
 .writing-font-preview { min-width: 210px; min-height: 42px; display: flex; align-items: center; margin: 0; padding: 7px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--cream); color: var(--ink); font-family: var(--writing-font, var(--font-body)); font-size: var(--writing-size, 15px); line-height: 1.25; }
 .writing-font-preview p { margin: 0; }
 
@@ -885,6 +927,7 @@ html[data-calm="true"] .menu-style-option:hover { transform: none; }
 .calendar-header h2, .calendar-day-detail h2 { margin: 0; font: 500 clamp(25px, 2.4vw, 32px)/1.1 var(--font-display); }
 .calendar-header .chip-row, .calendar-header .toolbar { min-width: 0; margin: 0; }
 .calendar-header .btn { min-height: 37px; }
+#calendar-month { width: 180px !important; font-size: 13px; }
 .calendar-weekdays, .calendar-grid { min-width: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .calendar-weekdays { margin-bottom: 5px; }
 .calendar-weekdays > * { min-width: 0; padding: 7px 2px; color: var(--muted); text-align: center; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
@@ -939,6 +982,9 @@ html[data-calm="true"] .menu-style-option:hover { transform: none; }
   .calendar-panel, .calendar-day-detail { padding: 14px; }
   .calendar-header { align-items: flex-start; margin-bottom: 11px; }
   .calendar-header h2 { width: 100%; }
+  .calendar-header .chip-row { display: grid; grid-template-columns: 37px minmax(0, 1fr) 37px; width: 100%; }
+  .calendar-header .btn { width: 37px; padding: 7px; }
+  #calendar-month { width: 100% !important; padding-inline: 8px !important; font-size: 12px; }
   .calendar-grid { gap: 3px; }
   .calendar-day { min-height: 57px; gap: 2px; padding: 5px; border-radius: 8px; }
   .calendar-day-number { min-width: 21px; min-height: 21px; font-size: 11px; }

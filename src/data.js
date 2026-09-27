@@ -12,7 +12,7 @@ const VERSION = 5;
 const JOURNEY_LENGTH = 30;
 const MS_PER_DAY = 86_400_000;
 const ACTIVE_ACTION_PERIODS = ['today', 'week', 'month', 'later'];
-const WRITING_FONTS = new Set(['nunito', 'lora', 'caveat', 'kalam', 'patrick', 'dancing']);
+const WRITING_FONTS = new Set(['nunito', 'lora', 'caveat', 'kalam', 'patrick', 'dancing', 'sacramento']);
 const MENU_STYLES = new Set(['sidebar', 'compact', 'top']);
 
 export { STORAGE_KEY };
@@ -25,8 +25,11 @@ const asText = value => typeof value === 'string' ? value : '';
 function validLocalDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+  // A saved calendar date must survive a change of time zone. Local midnight
+  // may not exist (for example, 2011-12-30 in Pacific/Apia), but the historical
+  // date is still valid and must not be discarded when importing a backup.
+  const date = new Date(`${value}T00:00:00Z`);
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
 function validLocalTime(value) {
@@ -109,6 +112,18 @@ function normalizeMilestone(value) {
   };
 }
 
+function normalizeList(value, normalize) {
+  const seen = new Set();
+  return asArray(value).filter(isObject).map(item => {
+    const record = normalize(item);
+    // Repair damaged local IDs once so editing or deleting one record cannot
+    // affect another. Backup validation rejects duplicate supplied IDs.
+    while (seen.has(record.id)) record.id = makeId();
+    seen.add(record.id);
+    return record;
+  });
+}
+
 function normalizeManifestation(value) {
   const item = asObject(value);
   return {
@@ -123,7 +138,7 @@ function normalizeManifestation(value) {
     category: asText(item.category),
     images: asArray(item.images),
     affirmations: asArray(item.affirmations),
-    milestones: asArray(item.milestones).map(normalizeMilestone),
+    milestones: normalizeList(item.milestones, normalizeMilestone),
     status: item.status === 'completed' ? 'completed' : 'active',
   };
 }
@@ -151,7 +166,7 @@ function normalizeAction(value) {
     priority,
     deadline: validLocalDate(item.deadline) ? item.deadline : '',
     dueTime: validLocalTime(item.dueTime) ? item.dueTime : '',
-    minutes: Number.isFinite(minutes) && minutes > 0 ? Math.round(minutes) : 5,
+    minutes: Number.isFinite(minutes) && minutes > 0 ? Math.max(1, Math.round(minutes)) : 5,
     energy,
     done,
     completedAt: asText(item.completedAt),
@@ -208,6 +223,7 @@ function normalizeRecord(value, fields = {}) {
     record[name] = typeof fallback === 'boolean' ? item[name] === true : asText(item[name]);
   }
   if ('date' in record && !validLocalDate(record.date)) record.date = '';
+  if ('weekStart' in record && !validLocalDate(record.weekStart)) record.weekStart = '';
   return record;
 }
 
@@ -255,6 +271,10 @@ function normalizeTechniqueSession(value) {
 /** Merge a partial older state with defaults without losing unknown optional fields. */
 function migrateState(value) {
   const source = asObject(value);
+  const retained = { ...source };
+  // The canonical sections below now own this data. Keeping stale legacy
+  // copies would re-export damaged or outdated records alongside repaired data.
+  for (const alias of ['goals', 'tasks', 'daily', 'vision', 'journalEntries', 'wins', 'method369', 'themePrefs']) delete retained[alias];
   const base = createInitialState();
   const profile = asObject(source.profile);
   const theme = asObject(source.theme ?? source.themePrefs);
@@ -262,7 +282,7 @@ function migrateState(value) {
   const journey = asObject(source.journey);
   return {
     ...base,
-    ...source,
+    ...retained,
     app: APP_ID,
     version: VERSION,
     createdAt: asText(source.createdAt) || base.createdAt,
@@ -275,19 +295,19 @@ function migrateState(value) {
       writingFont: WRITING_FONTS.has(theme.writingFont) ? theme.writingFont : base.theme.writingFont,
       menuStyle: MENU_STYLES.has(theme.menuStyle) ? theme.menuStyle : base.theme.menuStyle,
     },
-    manifestations: asArray(source.manifestations ?? source.goals).map(normalizeManifestation),
-    actions: asArray(source.actions ?? source.tasks).map(normalizeAction),
+    manifestations: normalizeList(source.manifestations ?? source.goals, normalizeManifestation),
+    actions: normalizeList(source.actions ?? source.tasks, normalizeAction),
     days: normalizeDays(source.days ?? source.daily),
-    visionBoard: asArray(source.visionBoard ?? source.vision).map(item => normalizeRecord(item, { title: '', category: '' })),
-    journals: asArray(source.journals ?? source.journalEntries).map(normalizeJournal),
-    habits: asArray(source.habits).map(normalizeHabit),
-    evidence: asArray(source.evidence ?? source.wins).map(item => normalizeRecord(item, { date: '', title: '', note: '' })),
-    weeklyReviews: asArray(source.weeklyReviews).map(item => normalizeRecord(item, { weekStart: '', movedForward: '', worked: '', blocked: '', releasing: '', nextWeek: '', firstAction: '' })),
-    monthlyReviews: asArray(source.monthlyReviews).map(item => normalizeRecord(item, { month: '', biggestWin: '', whatChanged: '', adjustments: '', nextIntention: '' })),
+    visionBoard: normalizeList(source.visionBoard ?? source.vision, item => normalizeRecord(item, { title: '', category: '' })),
+    journals: normalizeList(source.journals ?? source.journalEntries, normalizeJournal),
+    habits: normalizeList(source.habits, normalizeHabit),
+    evidence: normalizeList(source.evidence ?? source.wins, item => normalizeRecord(item, { date: '', title: '', note: '' })),
+    weeklyReviews: normalizeList(source.weeklyReviews, item => normalizeRecord(item, { weekStart: '', movedForward: '', worked: '', blocked: '', releasing: '', nextWeek: '', firstAction: '' })),
+    monthlyReviews: normalizeList(source.monthlyReviews, item => normalizeRecord(item, { month: '', biggestWin: '', whatChanged: '', adjustments: '', nextIntention: '' })),
     futureSelf: { ...base.futureSelf, ...futureSelf },
-    affirmations: asArray(source.affirmations).map(normalizeAffirmation),
-    logs369: asArray(source.logs369 ?? source.method369).map(item => normalizeRecord(item, { date: '', text: '' })),
-    techniqueSessions: asArray(source.techniqueSessions).map(normalizeTechniqueSession),
+    affirmations: normalizeList(source.affirmations, normalizeAffirmation),
+    logs369: normalizeList(source.logs369 ?? source.method369, item => normalizeRecord(item, { date: '', text: '' })),
+    techniqueSessions: normalizeList(source.techniqueSessions, normalizeTechniqueSession),
     journey: { ...base.journey, ...journey, startDate: validLocalDate(journey.startDate) ? journey.startDate : '' },
   };
 }
@@ -327,8 +347,7 @@ export function saveState(state) {
 
 function ordinal(date) {
   if (!validLocalDate(date)) return NaN;
-  const [year, month, day] = date.split('-').map(Number);
-  return Math.floor(Date.UTC(year, month - 1, day) / MS_PER_DAY);
+  return Math.floor(Date.parse(`${date}T00:00:00Z`) / MS_PER_DAY);
 }
 
 function dateFromOrdinal(number) {
@@ -337,7 +356,7 @@ function dateFromOrdinal(number) {
 
 function checkedIn(day) {
   if (!isObject(day)) return false;
-  const fields = ['intention', 'callingIn', 'smallAction', 'mood', 'energy', 'morningAffirmation', 'eveningReflection'];
+  const fields = ['calendarNote', 'intention', 'callingIn', 'smallAction', 'mood', 'energy', 'morningAffirmation', 'eveningReflection'];
   if (fields.some(name => asText(day[name]).trim())) return true;
   const journey = asObject(day.journey);
   return journey.completed === true || ['intention', 'visualization', 'action', 'gratitude', 'reflection']
@@ -374,7 +393,7 @@ export function stats(state, date = new Date()) {
   const completedActions = actions.filter(isDone).length;
   const actionsPercent = actions.length ? Math.round(completedActions / actions.length * 100) : 0;
 
-  const dayOfWeek = new Date(`${today}T12:00:00`).getDay();
+  const dayOfWeek = new Date(todayOrdinal * MS_PER_DAY).getUTCDay();
   const weekStartOrdinal = todayOrdinal - ((dayOfWeek + 6) % 7);
   let habitOpportunities = 0;
   let habitCompletions = 0;
@@ -451,6 +470,17 @@ export function exportBackup(state) {
   };
 }
 
+function duplicateRecordIds(records) {
+  const seen = new Set();
+  return records.some(record => {
+    const id = asText(record?.id);
+    if (!id) return false; // Older records receive a stable ID during migration.
+    if (seen.has(id)) return true;
+    seen.add(id);
+    return false;
+  });
+}
+
 /** Parse/check a backup before replacing local data. Returns {ok, state, error}. */
 export function validateBackup(value) {
   let parsed = value;
@@ -477,6 +507,23 @@ export function validateBackup(value) {
   if (arrays.some(field => field in candidate && !Array.isArray(candidate[field]))) {
     return { ok: false, state: null, error: 'A backup list has an invalid structure.' };
   }
+  if (arrays.some(field => Array.isArray(candidate[field]) && candidate[field].some(item => !isObject(item)))) {
+    return { ok: false, state: null, error: 'A backup record has an invalid structure.' };
+  }
+  if (arrays.some(field => Array.isArray(candidate[field]) && duplicateRecordIds(candidate[field]))) {
+    return { ok: false, state: null, error: 'A backup contains duplicate record IDs.' };
+  }
+  for (const field of ['manifestations', 'goals']) {
+    for (const item of asArray(candidate[field])) {
+      if (['milestones', 'images', 'affirmations'].some(name => name in item && !Array.isArray(item[name])) ||
+          asArray(item.milestones).some(milestone => !isObject(milestone))) {
+        return { ok: false, state: null, error: 'A manifestation has an invalid structure.' };
+      }
+      if (duplicateRecordIds(asArray(item.milestones))) {
+        return { ok: false, state: null, error: 'A manifestation contains duplicate milestone IDs.' };
+      }
+    }
+  }
   if (Array.isArray(candidate.techniqueSessions) && candidate.techniqueSessions.some(item =>
     !isObject(item) || ('fields' in item && !isObject(item.fields)))) {
     return { ok: false, state: null, error: 'The technique sessions have an invalid structure.' };
@@ -484,6 +531,37 @@ export function validateBackup(value) {
   const objects = ['profile', 'theme', 'themePrefs', 'days', 'daily', 'futureSelf', 'journey'];
   if (objects.some(field => field in candidate && !isObject(candidate[field]))) {
     return { ok: false, state: null, error: 'A backup section has an invalid structure.' };
+  }
+  for (const field of ['days', 'daily']) {
+    if (Object.entries(asObject(candidate[field])).some(([date, day]) =>
+      !validLocalDate(date) || !isObject(day) || ('journey' in day && !isObject(day.journey)))) {
+      return { ok: false, state: null, error: 'A saved day has an invalid date or structure.' };
+    }
+  }
+  // Reject invalid supplied dates instead of silently removing dated history.
+  const datedLists = {
+    manifestations: 'targetDate', goals: 'targetDate', actions: 'deadline', tasks: 'deadline',
+    journals: 'date', journalEntries: 'date', evidence: 'date', wins: 'date',
+    logs369: 'date', method369: 'date', techniqueSessions: 'date', weeklyReviews: 'weekStart',
+  };
+  for (const [field, dateField] of Object.entries(datedLists)) {
+    if (asArray(candidate[field]).some(item => dateField in item && item[dateField] !== '' && !validLocalDate(item[dateField]))) {
+      return { ok: false, state: null, error: 'A backup record has an invalid calendar date.' };
+    }
+  }
+  const journey = asObject(candidate.journey);
+  if ('startDate' in journey && journey.startDate !== '' && !validLocalDate(journey.startDate)) {
+    return { ok: false, state: null, error: 'The journey has an invalid start date.' };
+  }
+  for (const [field, dateMap] of [['habits', 'completions'], ['affirmations', 'completedDates']]) {
+    if (asArray(candidate[field]).some(item => {
+      if (!(dateMap in item)) return false;
+      const dates = item[dateMap];
+      return Array.isArray(dates) ? dates.some(date => !validLocalDate(date))
+        : !isObject(dates) || Object.keys(dates).some(date => !validLocalDate(date));
+    })) {
+      return { ok: false, state: null, error: 'A saved practice has an invalid date or structure.' };
+    }
   }
   return { ok: true, state: migrateState(candidate), error: '' };
 }
