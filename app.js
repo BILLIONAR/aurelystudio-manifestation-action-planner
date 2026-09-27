@@ -1,5 +1,5 @@
 async function appMain() {
-  const {createInitialState, loadState, saveState, localDate, makeId, stats, exportBackup, validateBackup} = await import('./src/data.js?v=7');
+  const {createInitialState, loadState, saveState, localDate, makeId, stats, exportBackup, validateBackup} = await import('./src/data.js?v=8');
   const APP = document.getElementById('app');
   const MODAL = document.getElementById('modal-root');
   const TOAST = document.getElementById('toast-root');
@@ -21,9 +21,10 @@ async function appMain() {
   const JOURNAL_TYPES = ['Manifestation Journal','Gratitude','Scripting','Future Self','Evidence / Wins','Lessons','Brain Dump'];
   const AFFIRMATION_CATEGORIES = ['General','Money','Confidence','Career','Relationships','Health'];
   const SCRIPTING_PROMPTS = ['It is December ' + (new Date().getFullYear() + 1) + ' and…','My ideal day looks like…','I am grateful that…','My life changed when…','The version of me who already has this…'];
-  // Original presets developed in the user's normal Chrome ChatGPT session; Pink Bloom follows the full-pink request.
+  // Original presets from Chrome ChatGPT; Pink Bloom and Soft Sanctuary follow the user's later visual briefs.
   const THEMES = [
     {id:'warm-sage',name:'Warm Sage',mood:'Grounded and gentle',main:'#53735c',accent:'#b88770',bg:'#fcf8f5',paper:'#fffdfc',ink:'#2f3a34',hero:'#1f2a2430'},
+    {id:'soft-sanctuary',name:'Soft Sanctuary',mood:'A sunlit space in sculpted glass',main:'#41665d',accent:'#b97258',bg:'#eee9df',paper:'#fbf8ef',ink:'#293b35',hero:'#ffffff18'},
     {id:'dawn-blush',name:'Dawn Blush',mood:'Soft hope and intention',main:'#8c6a6c',accent:'#c98f7a',bg:'#fbf5f2',paper:'#fffdfb',ink:'#3b2f31',hero:'#2b202328'},
     {id:'pink-bloom',name:'Pink Bloom',mood:'A rosy space for every page',main:'#984a6d',accent:'#c75d8e',bg:'#f7cfe0',paper:'#ffe4ee',ink:'#442334',hero:'#44233428'},
     {id:'midnight-ink',name:'Midnight Ink',mood:'Quiet focus and depth',main:'#243447',accent:'#b88a5a',bg:'#f4f1ec',paper:'#fcfaf7',ink:'#1f2730',hero:'#141b2450'},
@@ -155,16 +156,18 @@ async function appMain() {
   function renderNav(list){return list.map(([page,label,ico])=>`<a href="#/${page}" class="nav-link${currentRoute.page===page?' active':''}" aria-label="${attr(label)}" title="${attr(label)}" aria-current="${currentRoute.page===page?'page':'false'}" data-nav="${page}">${icon(ico)}<span>${label}</span></a>`).join('');}
   function shell(content){
     const name=state.profile.name?.trim()||'Friend';
+    const logo='<img src="assets/logo.svg" alt="AurelyStudio logo">';
+    const brandMark=state.theme.themeId==='soft-sanctuary'?`<span class="brand-mark">${logo}</span>`:logo;
     const title=MAIN_NAV.concat(TOOL_NAV,[['monthly','Monthly Reset','calendar'],['themes','Themes','settings'],['data','Data & Print','download']]).find(x=>x[0]===currentRoute.page)?.[1]||'Today';
     return `<div class="app-shell" id="app-shell"><aside class="sidebar" id="sidebar" aria-label="Main navigation">
-      <div class="brand"><img src="assets/logo.svg" alt="AurelyStudio logo"><strong>AurelyStudio</strong><small>Manifestation &amp;<br>Action Planner</small></div>
+      <div class="brand">${brandMark}<strong>AurelyStudio</strong><small>Manifestation &amp;<br>Action Planner</small></div>
       <nav class="nav-group" aria-label="Main">${renderNav(MAIN_NAV)}</nav>
       <div class="nav-group-label">Tools</div><nav class="nav-group" aria-label="Tools">${renderNav(TOOL_NAV)}</nav>
       <div class="nav-group-label">Your space</div><nav class="nav-group" aria-label="Settings">${renderNav([['themes','Themes','settings'],['data','Data & Print','download']])}</nav>
       <div class="sidebar-quote">A more<br>aligned you<br>creates a brighter<br>world.<small>♡</small></div>
     </aside><button class="sidebar-scrim" data-act="close-menu" aria-label="Close menu" hidden></button>
     <main class="main-area"><header class="topbar">
-      <button class="mobile-menu" data-act="menu" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">${icon('menu')}</button><div class="mobile-brand"><img src="assets/logo.svg" alt="AurelyStudio logo"><span><strong>AurelyStudio</strong><small>Manifestation &amp; Action Planner</small></span></div><button class="mobile-search-btn" data-act="mobile-search" aria-label="Search saved records">${icon('search')}</button>
+      <button class="mobile-menu" data-act="menu" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">${icon('menu')}</button><div class="mobile-brand">${brandMark}<span><strong>AurelyStudio</strong><small>Manifestation &amp; Action Planner</small></span></div><button class="mobile-search-btn" data-act="mobile-search" aria-label="Search saved records">${icon('search')}</button>
       <form class="topbar-search" id="search-form" role="search">${icon('search')}<input id="global-search" type="search" placeholder="Search your goals, actions, or inspiration…" value="${attr(searchValue)}" aria-label="Search all saved records"></form>
       <div class="topbar-actions"><button class="icon-btn" data-act="notification" aria-label="Today's reminder">${icon('bell')}</button><button class="profile-button" data-act="profile" aria-label="Edit your name"><span class="avatar">${esc(name[0].toUpperCase())}</span><span class="greeting"><small>${timeGreeting()},</small>${esc(name)}</span>${icon('chevron',16)}</button></div>
     </header><nav class="mobile-shortcuts" aria-label="Main sections">${renderNav(MAIN_NAV)}</nav><div class="mobile-page-label">${icon(MAIN_NAV.concat(TOOL_NAV).find(x=>x[0]===currentRoute.page)?.[2]||'spark',17)} ${esc(title)}</div>
@@ -383,14 +386,14 @@ async function appMain() {
     root.style.setProperty('--on-main',luminance>.18?'#1e2922':'#ffffff');
     root.style.setProperty('--sage',theme.main);root.style.setProperty('--sage-dark',theme.main);root.style.setProperty('--accent',theme.accent);root.style.setProperty('--canvas',theme.bg);root.style.setProperty('--paper',theme.paper);root.style.setProperty('--ink',theme.ink);
     root.style.setProperty('--sidebar',`color-mix(in srgb, ${theme.bg} 82%, ${theme.main})`);
-    root.style.setProperty('--muted',`color-mix(in srgb, ${theme.ink} 66%, ${theme.bg})`);
+    root.style.setProperty('--muted',theme.id==='soft-sanctuary'?'#4b5948':`color-mix(in srgb, ${theme.ink} 66%, ${theme.bg})`);
     root.style.setProperty('--line',`color-mix(in srgb, ${theme.main} 15%, ${theme.bg})`);
     root.style.setProperty('--sage-soft',`color-mix(in srgb, ${theme.main} 11%, ${theme.paper})`);
     root.style.setProperty('--cream',`color-mix(in srgb, ${theme.accent} 7%, ${theme.paper})`);
     root.style.setProperty('--hero-shade',theme.hero);
     const themeMeta=document.querySelector('meta[name="theme-color"]');if(themeMeta)themeMeta.content=theme.bg;
-    root.style.setProperty('--font-body',theme.id==='midnight-ink'||theme.id==='coastal-mist'?'"Inter", Arial, sans-serif':'"Nunito Sans", Arial, sans-serif');
-    root.style.setProperty('--font-display',theme.id==='midnight-ink'||theme.id==='coastal-mist'?'"Lora", Georgia, serif':'"Cormorant Garamond", Georgia, serif');
+    root.style.setProperty('--font-body',['midnight-ink','coastal-mist','soft-sanctuary'].includes(theme.id)?'"Inter", Arial, sans-serif':'"Nunito Sans", Arial, sans-serif');
+    root.style.setProperty('--font-display',theme.id==='soft-sanctuary'?'"Inter", Arial, sans-serif':theme.id==='midnight-ink'||theme.id==='coastal-mist'?'"Lora", Georgia, serif':'"Cormorant Garamond", Georgia, serif');
     root.style.setProperty('--font-script',`"${({'golden-ember':'Sacramento','dawn-blush':'Dancing Script','pink-bloom':'Dancing Script','desert-clay':'Kalam','coastal-mist':'Caveat','midnight-ink':'Patrick Hand'})[theme.id]||'Caveat'}", cursive`);
     root.dataset.theme=theme.id;root.dataset.handwritingScope='accents';root.dataset.night='false';root.dataset.calm=t.extraCalm?'true':'false';
     root.dataset.writingFont=WRITING_FONTS.some(([id])=>id===t.writingFont)?t.writingFont:'nunito';
