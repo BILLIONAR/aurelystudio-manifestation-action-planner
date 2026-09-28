@@ -1,5 +1,5 @@
 async function appMain() {
-  const {createInitialState, loadState, saveState, localDate, makeId, stats, exportBackup, validateBackup} = await import('./src/data.js?v=11');
+  const {createInitialState, loadState, saveState, localDate, makeId, stats, exportBackup, validateBackup} = await import('./src/data.js?v=12');
   const APP = document.getElementById('app');
   const MODAL = document.getElementById('modal-root');
   const TOAST = document.getElementById('toast-root');
@@ -830,7 +830,7 @@ async function appMain() {
   const welcomeRoot=document.getElementById('welcome-root');
   welcomeRoot.querySelector('.welcome-help').textContent='Just a first name or nickname. Saved only in this browser. No account needed.';
   try{
-    const {createWelcome}=await import('./src/welcome.js?v=11');
+    const {createWelcome}=await import('./src/welcome.js?v=12');
     welcomeController=createWelcome({
       root:welcomeRoot,
       getName:()=>state.profile.name?.trim()||visitName,
@@ -842,7 +842,7 @@ async function appMain() {
     });
   }catch{welcomeRoot.hidden=true;welcomeBlocking=false;syncAppInert();}
   try{
-    const {createFocusSession}=await import('./src/focus-session.js?v=11');
+    const {createFocusSession}=await import('./src/focus-session.js?v=12');
     focusSession=createFocusSession({
       root:document.getElementById('focus-root'),
       isCalm:()=>state.theme.extraCalm,

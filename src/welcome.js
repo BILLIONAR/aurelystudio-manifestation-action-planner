@@ -15,12 +15,15 @@ export function createWelcome({root, getName, saveName, onVisitName, beforeOpen,
   const abort = new AbortController();
   let active = false;
   let first = false;
+  let intro = false;
+  const entranceMs = 4000;
+  const departureMs = 360;
   let leaving = false;
   let saving = false;
   let returnTimer;
   let exitTimer;
   let startedAt = 0;
-  let remaining = 1800;
+  let remaining = entranceMs - departureMs;
   let hiddenAt = document.hidden ? Date.now() : 0;
   let restoreTarget;
   let bodyOverflow;
@@ -47,13 +50,14 @@ export function createWelcome({root, getName, saveName, onVisitName, beforeOpen,
   }
   function focusInside() {
     if (!active || document.hidden) return;
-    const target = first && !matchMedia('(pointer: coarse)').matches ? input : first ? panel : skip;
+    const target = intro ? panel : first && !matchMedia('(pointer: coarse)').matches ? input : first ? panel : skip;
     target.focus({preventScroll: true});
   }
   function finish() {
     if (!active) return;
     clearTimers();
-    active = leaving = false;
+    active = leaving = intro = false;
+    root.dataset.phase = 'closed';
     root.hidden = true;
     root.classList.remove('is-leaving');
     document.body.style.overflow = bodyOverflow;
@@ -70,16 +74,17 @@ export function createWelcome({root, getName, saveName, onVisitName, beforeOpen,
     leaving = true;
     root.classList.add('is-leaving');
     if (calm() || document.hidden) finish();
-    else exitTimer = setTimeout(finish, 360);
+    else exitTimer = setTimeout(finish, departureMs);
   }
   function scheduleReturn() {
     clearTimeout(returnTimer);
-    if (!active || first || leaving || document.hidden) return;
+    if (!active || (first && !intro) || leaving || document.hidden) return;
     startedAt = Date.now();
-    returnTimer = setTimeout(close, remaining);
+    returnTimer = setTimeout(intro ? showNameForm : close, remaining);
   }
-  function showReturn(name) {
-    first = false;
+  function showReturn(name, duration = entranceMs) {
+    first = intro = false;
+    root.dataset.phase = 'return';
     form.hidden = true;
     returning.hidden = false;
     root.classList.remove('is-loading', 'is-first');
@@ -87,10 +92,26 @@ export function createWelcome({root, getName, saveName, onVisitName, beforeOpen,
     title.textContent = `Welcome back, ${name}.`;
     copy.textContent = 'Manifest it. Break it down. Take one step today.';
     returning.querySelector('[data-welcome-status]').textContent = 'Your space is ready.';
-    remaining = calm() ? 650 : 1800;
+    remaining = calm() ? 650 : Math.max(0, duration - departureMs);
     root.style.setProperty('--welcome-return-ms', `${remaining}ms`);
     if (!document.hidden) skip.focus({preventScroll: true});
     scheduleReturn();
+  }
+  function showNameForm() {
+    if (!active) return;
+    intro = false;
+    root.dataset.phase = 'name';
+    root.classList.remove('is-loading');
+    root.classList.add('is-first');
+    title.textContent = 'A little intention.\nA new beginning.';
+    copy.textContent = 'Let’s make this space yours. What should we call you?';
+    form.hidden = false;
+    returning.hidden = true;
+    error.hidden = true;
+    visit.hidden = true;
+    input.value = '';
+    input.removeAttribute('aria-invalid');
+    focusInside();
   }
   function open() {
     if (active) return;
@@ -99,27 +120,29 @@ export function createWelcome({root, getName, saveName, onVisitName, beforeOpen,
     bodyOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     active = true;
-    leaving = false;
+    leaving = intro = false;
     clearTimers();
     root.hidden = false;
     root.className = 'welcome-overlay';
     root.dataset.calm = String(calm());
+    root.dataset.paused = String(document.hidden);
     root.scrollTop = 0;
     onBlocking?.(true);
     const name = cleanName(getName());
     first = !name;
     if (name) showReturn(name);
     else {
-      root.classList.add('is-first');
-      title.textContent = 'A little intention.\nA new beginning.';
-      copy.textContent = 'Let’s make this space yours. What should we call you?';
-      form.hidden = false;
-      returning.hidden = true;
-      error.hidden = true;
-      visit.hidden = true;
-      input.value = '';
-      input.removeAttribute('aria-invalid');
+      intro = true;
+      root.dataset.phase = 'intro';
+      root.classList.add('is-loading');
+      title.textContent = 'Your next chapter starts here.';
+      copy.textContent = 'Manifest it. Break it down. Take one step today.';
+      form.hidden = returning.hidden = true;
+      remaining = calm() ? 0 : entranceMs;
+      root.style.setProperty('--welcome-return-ms', `${remaining}ms`);
       focusInside();
+      if (remaining === 0) showNameForm();
+      else scheduleReturn();
     }
   }
   form.addEventListener('submit', async event => {
@@ -134,7 +157,7 @@ export function createWelcome({root, getName, saveName, onVisitName, beforeOpen,
     try {
       await saveName(name);
       title.textContent = `Your next chapter, ${name}.`;
-      showReturn(name);
+      showReturn(name, 650);
       title.textContent = `Your next chapter, ${name}.`;
     } catch {
       error.textContent = 'Your browser couldn’t save your name. Try again, or continue for this visit.';
@@ -156,7 +179,7 @@ export function createWelcome({root, getName, saveName, onVisitName, beforeOpen,
     const name = validName();
     if (!name || saving) return;
     onVisitName?.(name);
-    showReturn(name);
+    showReturn(name, 650);
     returning.querySelector('[data-welcome-status]').textContent = 'Your name is set for this visit.';
   }, {signal: abort.signal});
   skip.addEventListener('click', close, {signal: abort.signal});
@@ -204,7 +227,10 @@ export function createWelcome({root, getName, saveName, onVisitName, beforeOpen,
   }, {signal: abort.signal});
   function updateMotion() {
     root.dataset.calm = String(calm());
-    if (active && !first && calm()) { remaining = Math.min(remaining, 650); scheduleReturn(); }
+    if (active && calm()) {
+      if (intro) { clearTimeout(returnTimer); showNameForm(); }
+      else if (!first) { remaining = Math.min(remaining, 650); scheduleReturn(); }
+    }
   }
   motion.addEventListener('change', updateMotion, {signal: abort.signal});
   window.addEventListener('beforeprint', finish, {signal: abort.signal});

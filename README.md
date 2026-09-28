@@ -4,7 +4,7 @@ A local-first, undated web app built around **Manifest it. Break it down. Take o
 
 ## What is inside
 
-- **Welcome:** an original 3D glass entrance asks for a local first name or nickname once; later cold opens and reloads greet you by name. Enter now skips the short greeting. Extra Calm and system reduced-motion keep the welcome still.
+- **Welcome:** an original four-second animated 3D glass entrance then asks for a local first name or nickname once; later cold opens and reloads greet you by name for four seconds, including the exit fade. Enter now skips the greeting. Saving a new name uses a brief confirmation rather than replaying the entrance. Extra Calm and system reduced-motion keep the welcome still.
 - **Today:** intention, calling-in note, one small action, top three actions, mood and energy, morning affirmation, evening reflection, daily streak, and a five-part 30-day journey.
 - **Calendar:** live device-local date and time, a month/year picker, unlimited dated history, notes for any day, and a day view for timed actions, journal entries, wins, and manifestation practices. The 30-day journey is optional and separate from the continuing calendar.
 - **Manifestations:** each dream becomes a project with a reason, desired date, success measure, future-self description, imagery, affirmations, milestones, linked actions, and progress calculated from completed steps.
