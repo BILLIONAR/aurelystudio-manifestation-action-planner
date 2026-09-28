@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#fbfaf8">
+  <meta name="color-scheme" content="light">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Aurely Planner">
   <meta name="author" content="AurelyStudioCo">
   <meta name="creator" content="AurelyStudioCo">
   <meta name="publisher" content="AurelyStudioCo">
@@ -21,13 +25,38 @@
   <meta name="twitter:description" content="Manifest it. Break it down. Take one step today.">
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="welcome.css?v=11">
+  <link rel="stylesheet" href="focus.css?v=11">
   <title>AurelyStudio | Manifestation & Action Planner</title>
 </head>
 <body>
-  <div id="app"></div>
+  <div id="welcome-root" class="welcome-overlay is-loading" role="dialog" aria-modal="true" aria-labelledby="welcome-title" aria-describedby="welcome-copy">
+    <div class="welcome-scene">
+      <div class="welcome-orb orb-one" aria-hidden="true"></div>
+      <div class="welcome-orb orb-two" aria-hidden="true"></div>
+      <section class="welcome-panel" tabindex="-1">
+        <div class="welcome-brand"><img src="assets/logo.svg" alt="AurelyStudio logo"><strong>AurelyStudio</strong><span>Manifestation &amp; Action Planner</span></div>
+        <p class="welcome-kicker">Your space to become</p>
+        <h1 id="welcome-title">Your next chapter starts here.</h1>
+        <p id="welcome-copy">Manifest it. Break it down. Take one step today.</p>
+        <form class="welcome-name-form" novalidate hidden>
+          <label for="welcome-name">Your first name or nickname</label>
+          <input id="welcome-name" name="welcome-name" type="text" maxlength="40" autocomplete="nickname" autocapitalize="words" placeholder="What should we call you?" aria-describedby="welcome-help welcome-error">
+          <p id="welcome-help" class="welcome-help">A name, a little intention, and a place to begin. No account needed.</p>
+          <p id="welcome-error" class="welcome-error" role="alert" hidden></p>
+          <button class="welcome-start" type="submit">Enter my space</button>
+          <button class="welcome-session" type="button" hidden>Continue for this visit</button>
+        </form>
+        <div class="welcome-return" hidden><span data-welcome-status role="status">Your space is ready.</span><button class="welcome-skip" type="button">Enter now →</button></div>
+        <div class="welcome-progress" aria-hidden="true"><span></span></div>
+      </section>
+    </div>
+  </div>
+  <div id="app" inert></div>
+  <div id="focus-root" hidden></div>
   <div id="modal-root"></div>
   <div id="toast-root" aria-live="polite"></div>
-  <script type="module" src="app.js?v=10"></script>
+  <script type="module" src="app.js?v=11"></script>
 </body>
 </html>

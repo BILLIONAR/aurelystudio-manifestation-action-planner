@@ -1,5 +1,5 @@
 async function appMain() {
-  const {createInitialState, loadState, saveState, localDate, makeId, stats, exportBackup, validateBackup} = await import('./src/data.js?v=10');
+  const {createInitialState, loadState, saveState, localDate, makeId, stats, exportBackup, validateBackup} = await import('./src/data.js?v=11');
   const APP = document.getElementById('app');
   const MODAL = document.getElementById('modal-root');
   const TOAST = document.getElementById('toast-root');
@@ -146,6 +146,7 @@ async function appMain() {
   const timeGreeting = () => {const h=new Date().getHours();return h<12?'Good morning':h<18?'Good afternoon':'Good evening';};
   const nowTime = () => new Date().toTimeString().slice(0,5);
   let state = loadState();
+  let visitName = '';
   let selectedDate = localDate();
   let calendarMonth = monthKey(selectedDate);
   let observedLocalDate = selectedDate;
@@ -160,7 +161,11 @@ async function appMain() {
   let toastTimer;
   let draftTimer;
   let visionViewer=null;
-  new MutationObserver(()=>{if(visionViewer&&!MODAL.querySelector('.vision-viewer'))closeVisionViewer(false,false);APP.inert=Boolean(MODAL.firstElementChild);}).observe(MODAL,{childList:true});
+  let welcomeController=null;
+  let welcomeBlocking=true;
+  let focusSession=null;
+  function syncAppInert(){APP.inert=welcomeBlocking||Boolean(MODAL.firstElementChild);MODAL.inert=welcomeBlocking;const focusRoot=document.getElementById('focus-root');if(focusRoot)focusRoot.inert=welcomeBlocking||Boolean(MODAL.firstElementChild);}
+  new MutationObserver(()=>{if(visionViewer&&!MODAL.querySelector('.vision-viewer'))closeVisionViewer(false,false);syncAppInert();}).observe(MODAL,{childList:true});
   function routeFromHash(){try{const parts=location.hash.replace(/^#\/?/,'').split('/').filter(Boolean).map(part=>decodeURIComponent(part));return {page:parts[0]||'today',id:parts[1]||''};}catch{return {page:'today',id:''};}}
   function go(page,id='',preserveDate=false){closeVisionViewer(false);if(page==='today'&&!preserveDate)selectedDate=localDate();if(page==='calendar'&&currentRoute.page!=='calendar')calendarMonth=monthKey(selectedDate);location.hash=`#/${page}${id?`/${encodeURIComponent(id)}`:''}`;currentRoute=routeFromHash();MODAL.innerHTML='';render();window.scrollTo({top:0,behavior:'instant'});}
   function toast(message,error=false){TOAST.innerHTML=`<div class="toast${error?' error':''}" role="status">${esc(message)}</div>`;clearTimeout(toastTimer);toastTimer=setTimeout(()=>TOAST.innerHTML='',4000);}
@@ -172,7 +177,7 @@ async function appMain() {
   function dayRecord(date=selectedDate){state.days[date] ||= {calendarNote:'',intention:'',callingIn:'',smallAction:'',mood:'',energy:'',morningAffirmation:'',eveningReflection:'',journey:{intention:'',visualization:'',action:'',gratitude:'',reflection:'',completed:false}};state.days[date].journey ||= {intention:'',visualization:'',action:'',gratitude:'',reflection:'',completed:false};return state.days[date];}
   function renderNav(list){return list.map(([page,label,ico])=>`<a href="#/${page}" class="nav-link${currentRoute.page===page?' active':''}" aria-label="${attr(label)}" title="${attr(label)}" aria-current="${currentRoute.page===page?'page':'false'}" data-nav="${page}">${icon(ico)}<span>${label}</span></a>`).join('');}
   function shell(content){
-    const name=state.profile.name?.trim()||'Friend';
+    const name=state.profile.name?.trim()||visitName||'Friend';
     const logo='<img src="assets/logo.svg" alt="AurelyStudio logo">';
     const brandMark=appearanceMode()!=='normal'?`<span class="brand-mark">${logo}</span>`:logo;
     const title=MAIN_NAV.concat(TOOL_NAV,[['monthly','Monthly Reset','calendar'],['themes','Themes','settings'],['data','Data & Print','download']]).find(x=>x[0]===currentRoute.page)?.[1]||'Today';
@@ -199,7 +204,7 @@ async function appMain() {
   function ring(label,value,color='var(--sage)'){return `<div class="ring-group"><div class="ring" style="--progress:${pct(value)}%;--ring-color:${color}"><span>${pct(value)}%</span></div><span>${label}</span></div>`;}
   function actionSort(a,b){const score=x=>({high:3,medium:2,low:1}[x.priority]||0);return score(b)-score(a)||String(a.deadline||'9999').localeCompare(String(b.deadline||'9999'))||String(a.dueTime||'99:99').localeCompare(String(b.dueTime||'99:99'));}
   function suggestedActions(){const energy=state.days[selectedDate]?.energy;return state.actions.filter(a=>!a.done&&(!a.deadline||a.deadline<=selectedDate)).sort((a,b)=>{const ad=a.deadline&&a.deadline<=selectedDate?1:0,bd=b.deadline&&b.deadline<=selectedDate?1:0,am=a.energy===energy?1:0,bm=b.energy===energy?1:0;return bd-ad||bm-am||actionSort(a,b)||a.minutes-b.minutes;});}
-  function actionRow(a,compact=false){return `<div class="list-row action-row" data-record-id="${attr(a.id)}" tabindex="-1"><input type="checkbox" data-toggle-action="${attr(a.id)}" aria-label="${a.done?'Reopen':'Complete'} ${attr(a.title)}" ${a.done?'checked':''}><div class="row-copy"><strong class="${a.done?'done':''}">${esc(a.title)}</strong>${compact?'':`<small>${esc(a.minutes)} min · ${esc(a.energy)} energy${a.deadline?` · ${fmtDate(a.deadline)}${a.dueTime?` at ${esc(a.dueTime)}`:''}`:''}</small>`}</div>${compact?'':`<button class="icon-btn" data-act="edit-action" data-id="${attr(a.id)}" aria-label="Edit ${attr(a.title)}">${icon('edit',16)}</button><button class="icon-btn" data-act="delete-action" data-id="${attr(a.id)}" aria-label="Delete ${attr(a.title)}">${icon('trash',16)}</button>`}</div>`;}
+  function actionRow(a,compact=false){return `<div class="list-row action-row" data-record-id="${attr(a.id)}" tabindex="-1"><input type="checkbox" data-toggle-action="${attr(a.id)}" aria-label="${a.done?'Reopen':'Complete'} ${attr(a.title)}" ${a.done?'checked':''}><div class="row-copy"><strong class="${a.done?'done':''}">${esc(a.title)}</strong>${compact?'':`<small><button class="action-timer-link" type="button" data-act="focus-action" data-id="${attr(a.id)}" aria-label="Open a ${attr(a.minutes)} minute timer for ${attr(a.title)}"><span aria-hidden="true">◷</span> ${esc(a.minutes)} min</button> · ${esc(a.energy)} energy${a.deadline?` · ${fmtDate(a.deadline)}${a.dueTime?` at ${esc(a.dueTime)}`:''}`:''}</small>`}</div>${compact?'':`<button class="icon-btn" data-act="edit-action" data-id="${attr(a.id)}" aria-label="Edit ${attr(a.title)}">${icon('edit',16)}</button><button class="icon-btn" data-act="delete-action" data-id="${attr(a.id)}" aria-label="Delete ${attr(a.title)}">${icon('trash',16)}</button>`}</div>`;}
   function habitMatrix(compact=false){const dates=weekDates(habitWeek),habits=state.habits.filter(h=>h.active!==false);if(!habits.length)return empty('A gentle rhythm starts here','Add up to eight practices you want to return to.','Add a habit','new-habit');return `<table class="habit-table"><thead><tr><th scope="col"></th>${dates.map(d=>`<th scope="col" title="${fmtDate(d)}">${new Intl.DateTimeFormat('en',{weekday:'narrow'}).format(new Date(`${d}T12:00:00`))}</th>`).join('')}</tr></thead><tbody>${habits.map(h=>`<tr><td>${esc(h.title)}</td>${dates.map(d=>`<td><button class="habit-dot ${h.completions?.[d]?'done':''}" data-toggle-habit="${attr(h.id)}" data-date="${d}" aria-label="${h.completions?.[d]?'Clear':'Mark'} ${attr(h.title)} on ${fmtDate(d)}" aria-pressed="${!!h.completions?.[d]}"></button></td>`).join('')}</tr>`).join('')}</tbody></table>${compact?'':`<p class="small-note">Tap a day to mark a practice. This week: ${stats(state).habitsPercent}% complete.</p>`}`;}
   function visionImageButton(item){return `<button type="button" class="vision-image-button" data-open-vision="${attr(item.id)}" aria-label="View ${attr(item.title||'vision image')} larger"><img src="${attr(item.image)}" alt="${attr(item.title||'Vision Board image')}" loading="lazy"><span class="vision-image-hint" aria-hidden="true">${icon('search',16)}</span></button>`;}
   function renderToday(){
@@ -330,7 +335,7 @@ async function appMain() {
     const groups=[['today','Today'],['week','This Week'],['month','This Month'],['later','Later'],['done','Done']];
     const filtered=state.actions.filter(a=>actionFilter==='all'||a.energy===actionFilter||a.priority===actionFilter||String(a.minutes)===actionFilter);
     const next=suggestedActions()[0];
-    return `${pageHead('Dreams need movement','Action Plan','Choose a small, practical step that fits your time and energy.',`<button class="btn btn-primary" data-act="new-action">${icon('plus',16)} New Action</button>`)}<section class="panel next-step"><span class="eyebrow">TODAY’S NEXT STEP</span><h2>${esc(next?.title||'Your next step begins with one action.')}</h2><p>${next?`${next.minutes} minutes · ${next.energy} energy · ${next.priority} priority`:'Add a practical task, then come back for a clear suggestion.'}</p>${next?`<button class="btn btn-primary" data-act="focus-action" data-id="${attr(next.id)}">Focus on this</button>`:''}</section><div class="toolbar"><div class="chip-row">${['all','low','medium','high','5','15','30'].map(x=>`<button class="chip ${actionFilter===x?'selected':''}" data-action-filter="${x}">${x==='all'?'All':/^\d/.test(x)?`${x} min`:`${x[0].toUpperCase()+x.slice(1)}`}</button>`).join('')}</div><small class="muted">${state.actions.filter(a=>a.done).length}/${state.actions.length} completed</small></div><div class="section-grid">${groups.map(([key,label])=>panel(label,filtered.filter(a=>key==='done'?a.done:a.period===key&&!a.done).sort(actionSort).map(a=>actionRow(a)).join('')||`<p class="muted">Nothing here yet.</p>`)).join('')}</div>`;
+    return `${pageHead('Dreams need movement','Action Plan','Choose a small, practical step that fits your time and energy.',`<button class="btn" data-act="focus-timer">Focus timer</button><button class="btn btn-primary" data-act="new-action">${icon('plus',16)} New Action</button>`)}<section class="panel next-step"><span class="eyebrow">TODAY’S NEXT STEP</span><h2>${esc(next?.title||'Your next step begins with one action.')}</h2><p>${next?`${next.minutes} minutes · ${next.energy} energy · ${next.priority} priority`:'Add a practical task, then come back for a clear suggestion.'}</p>${next?`<button class="btn btn-primary" data-act="focus-action" data-id="${attr(next.id)}">Focus on this</button>`:''}</section><div class="toolbar"><div class="chip-row">${['all','low','medium','high','5','15','30'].map(x=>`<button class="chip ${actionFilter===x?'selected':''}" data-action-filter="${x}">${x==='all'?'All':/^\d/.test(x)?`${x} min`:`${x[0].toUpperCase()+x.slice(1)}`}</button>`).join('')}</div><small class="muted">${state.actions.filter(a=>a.done).length}/${state.actions.length} completed</small></div><div class="section-grid">${groups.map(([key,label])=>panel(label,filtered.filter(a=>key==='done'?a.done:a.period===key&&!a.done).sort(actionSort).map(a=>actionRow(a)).join('')||`<p class="muted">Nothing here yet.</p>`)).join('')}</div>`;
   }
   function renderJournal(){
     const entries=state.journals.filter(j=>journalFilter==='All'||j.type===journalFilter).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
@@ -392,7 +397,7 @@ async function appMain() {
   function renderData(){
     return `${pageHead('Keep your work with you','Data & Print','Your entries are saved in this browser. Download a backup before changing devices or clearing browser data.')}<div class="section-grid"><section class="panel"><div class="panel-head"><h2>Backup & restore</h2></div><p>Download one readable JSON file with your projects, calendar notes, dated actions and their times, journal, vision board, habits, reviews, name, and theme choices.</p><div class="chip-row"><button class="btn btn-primary" data-act="backup">${icon('download',16)} Download backup</button><button class="btn upload-label" data-act="restore-backup">${icon('upload',16)} Restore backup</button><input id="restore-file" type="file" accept=".json,application/json" hidden></div><p class="small-note">To move devices: download, send the file to yourself, then restore it on the new device. No account or cloud sync.</p><button class="btn btn-danger" data-act="reset-data">Erase local data</button></section><section class="panel"><div class="panel-head"><h2>Print / PDF Center</h2></div><p>Use your browser’s Print dialog to print or save a PDF of the part you need.</p><div class="print-options">${[['today','Today’s page'],['calendar','Selected calendar day'],['actions','Action plan'],['manifestations','Manifestations'],['journal','Journal entries'],['progress','Progress summary'],['techniques','Technique sessions']].map(([key,label])=>`<button class="btn" data-print="${key}">${icon('print',16)} ${label}</button>`).join('')}</div></section><section class="panel full"><div class="panel-head"><h2>Install & privacy</h2></div><p>Install the app from a secure website for quick access. Your entries remain in this browser’s local storage; installation does not create an account or automatic device sync.</p><button class="btn" data-act="install">Install app</button><p class="small-note">iPhone/iPad: Safari → Share → Add to Home Screen. Android/desktop: browser menu → Install app or Add to Home screen. Installation requires HTTPS or localhost.</p></section></div>`;
   }
-  function render(){currentRoute=routeFromHash();applyTheme();let content;switch(currentRoute.page){case 'today':content=renderToday();break;case 'calendar':content=renderCalendar();break;case 'manifestations':content=renderManifestations();break;case 'vision':content=renderVision();break;case 'actions':content=renderActions();break;case 'journal':content=renderJournal();break;case 'habits':content=renderHabits();break;case 'progress':content=renderProgress();break;case 'affirmations':content=renderAffirmations();break;case 'techniques':content=renderTechniques();break;case 'method369':content=render369();break;case 'future':content=renderFuture();break;case 'weekly':content=reviewForm('weekly');break;case 'monthly':content=reviewForm('monthly');break;case 'themes':case 'theme':content=renderThemes();break;case 'data':content=renderData();break;default:content=renderToday();}APP.innerHTML=shell(content);APP.querySelectorAll('textarea').forEach(field=>field.classList.add('writing-input'));const scrim=APP.querySelector('.sidebar-scrim');if(scrim)scrim.hidden=true;updateLiveClock();}
+  function render(){currentRoute=routeFromHash();applyTheme();let content;switch(currentRoute.page){case 'today':content=renderToday();break;case 'calendar':content=renderCalendar();break;case 'manifestations':content=renderManifestations();break;case 'vision':content=renderVision();break;case 'actions':content=renderActions();break;case 'journal':content=renderJournal();break;case 'habits':content=renderHabits();break;case 'progress':content=renderProgress();break;case 'affirmations':content=renderAffirmations();break;case 'techniques':content=renderTechniques();break;case 'method369':content=render369();break;case 'future':content=renderFuture();break;case 'weekly':content=reviewForm('weekly');break;case 'monthly':content=reviewForm('monthly');break;case 'themes':case 'theme':content=renderThemes();break;case 'data':content=renderData();break;default:content=renderToday();}APP.innerHTML=shell(content);APP.querySelectorAll('textarea').forEach(field=>field.classList.add('writing-input'));const scrim=APP.querySelector('.sidebar-scrim');if(scrim)scrim.hidden=true;updateLiveClock();focusSession?.refreshAppearance();}
   function updateLiveClock(){
     const now=new Date(),date=localDate(now),clock=APP.querySelector('#calendar-live-clock'),dateLabel=APP.querySelector('#calendar-live-date'),zoneLabel=APP.querySelector('#calendar-timezone');
     if(clock){clock.textContent=new Intl.DateTimeFormat('en',{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(now);clock.dateTime=now.toISOString();}
@@ -433,7 +438,7 @@ async function appMain() {
     for(const [property,value] of Object.entries(viewer.bodyStyle))document.body.style[property]=value;
     document.body.classList.remove('vision-viewer-open');
     if(clearModal)MODAL.innerHTML='';
-    APP.inert=Boolean(MODAL.firstElementChild);
+    syncAppInert();
     window.scrollTo({left:viewer.scrollX,top:viewer.scrollY,behavior:'instant'});
     if(restoreFocus&&viewer.opener?.isConnected&&!APP.inert)viewer.opener.focus({preventScroll:true});
   }
@@ -525,7 +530,7 @@ async function appMain() {
     if(kind==='habit'){dialog('Add a habit',`${field('Habit name *','title','','text','required maxlength="60"')}`,'habit','Add habit');}
     if(kind==='evidence'){dialog('Evidence of progress',`<div class="form-grid">${field('What happened? *','title','','text','required maxlength="120"')}${field('Date','date',selectedDate,'date','required')}${textField('A little more about it','note')}</div>`,'evidence','Save evidence');}
     if(kind==='affirmation'){dialog('New affirmation',`<input name="manifestationId" type="hidden" value="${attr(extra)}"><div class="form-grid">${selectField('Category','category',AFFIRMATION_CATEGORIES.map(x=>[x,x]),'General')}<label class="field full">Your affirmation *<textarea name="text" required maxlength="300" placeholder="Write something supportive and believable."></textarea></label></div>`,'affirmation','Save affirmation');}
-    if(kind==='profile'){dialog('Your space',`${field('What should we call you?','name',state.profile.name,'text','maxlength="40" autocomplete="nickname"')}<p class="small-note">Just a first name or nickname. No account needed.</p>`,'profile','Save name');}
+    if(kind==='profile'){dialog('Your space',`${field('What should we call you?','name',state.profile.name||visitName,'text','maxlength="40" autocomplete="nickname"')}<p class="small-note">Just a first name or nickname. No account needed.</p>`,'profile','Save name');}
   }
   async function imageToDataURL(file){
     if(file.type==='image/gif'){
@@ -689,7 +694,8 @@ async function appMain() {
     if(act==='favorite-affirmation'){const a=state.affirmations.find(x=>x.id===id);a.favorite=!a.favorite;commit('Affirmation updated');return;}
     if(act==='complete-affirmation'){const a=state.affirmations.find(x=>x.id===id),today=localDate();a.completedDates||={};a.completedDates[today]=!a.completedDates[today];commit('Affirmation updated');return;}
     if(act==='set-morning-affirmation'){const a=state.affirmations.find(x=>x.id===id);dayRecord(localDate()).morningAffirmation=a.text;selectedDate=localDate();commit('Morning affirmation set');go('today');return;}
-    if(act==='focus-action'){const a=state.actions.find(x=>x.id===id);if(!a)return;dialog('Today’s next step',`<p class="focus-title">${esc(a.title)}</p><p>${a.minutes} minutes · ${a.energy} energy</p><button class="btn btn-primary" data-toggle-action="${attr(a.id)}">Mark done when finished</button>`);return;}
+    if(act==='focus-timer'){if(focusSession)focusSession.open({title:'One small step',minutes:5});else toast('The timer is getting ready. Try again in a moment.');return;}
+    if(act==='focus-action'){const a=state.actions.find(x=>x.id===id);if(!a)return;if(focusSession)focusSession.open({id:a.id,title:a.title,minutes:a.minutes});else toast('The timer is getting ready. Try again in a moment.');return;}
     if(act?.startsWith('delete-')){const map={'delete-manifestation':'manifestations','delete-action':'actions','delete-vision':'visionBoard','delete-journal':'journals','delete-habit':'habits','delete-evidence':'evidence','delete-affirmation':'affirmations','delete-technique':'techniqueSessions'};const key=map[act];if(!key||!confirm('Delete this item? This cannot be undone without a backup.'))return;state[key]=state[key].filter(x=>x.id!==id);if(act==='delete-manifestation'){state.actions=state.actions.map(a=>a.manifestationId===id?{...a,manifestationId:''}:a);go('manifestations');}commit('Item deleted');return;}
     if(act==='restore-backup'){document.getElementById('restore-file')?.click();return;}
     if(act==='backup'){const file=exportBackup(state);download(file.content,file.filename,file.mimeType);toast('Backup downloaded');return;}
@@ -821,5 +827,29 @@ async function appMain() {
   window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;});
   if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
   render();
+  const welcomeRoot=document.getElementById('welcome-root');
+  welcomeRoot.querySelector('.welcome-help').textContent='Just a first name or nickname. Saved only in this browser. No account needed.';
+  try{
+    const {createWelcome}=await import('./src/welcome.js?v=11');
+    welcomeController=createWelcome({
+      root:welcomeRoot,
+      getName:()=>state.profile.name?.trim()||visitName,
+      isCalm:()=>state.theme.extraCalm,
+      beforeOpen:()=>{if(draftTimer){clearTimeout(draftTimer);draftTimer=null;persist();}closeVisionViewer(false);MODAL.innerHTML='';},
+      onBlocking:blocked=>{welcomeBlocking=blocked;syncAppInert();},
+      saveName:name=>{const latest=loadState();state=saveState({...latest,profile:{...latest.profile,name}});render();},
+      onVisitName:name=>{visitName=name;render();}
+    });
+  }catch{welcomeRoot.hidden=true;welcomeBlocking=false;syncAppInert();}
+  try{
+    const {createFocusSession}=await import('./src/focus-session.js?v=11');
+    focusSession=createFocusSession({
+      root:document.getElementById('focus-root'),
+      isCalm:()=>state.theme.extraCalm,
+      onNotice:(message,error=false)=>toast(message,error),
+      onCompleteTask:id=>{const action=state.actions.find(item=>item.id===id);if(!action){toast('This action is no longer in your plan.',true);return false;}if(action.done){toast('This action is already complete.');return true;}action.previousPeriod=['today','week','month','later'].includes(action.period)?action.period:'today';action.done=true;action.period='done';action.completedAt=new Date().toISOString();return commit('Action completed');}
+    });
+    syncAppInert();
+  }catch{toast('The timer is unavailable. Reload to try again.',true);}
 }
 appMain();
