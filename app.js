@@ -1,5 +1,5 @@
 async function appMain() {
-  const {createInitialState, loadState, saveState, localDate, makeId, stats, exportBackup, validateBackup} = await import('./src/data.js?v=9');
+  const {createInitialState, loadState, saveState, localDate, makeId, stats, exportBackup, validateBackup} = await import('./src/data.js?v=10');
   const APP = document.getElementById('app');
   const MODAL = document.getElementById('modal-root');
   const TOAST = document.getElementById('toast-root');
@@ -159,9 +159,10 @@ async function appMain() {
   let currentRoute = routeFromHash();
   let toastTimer;
   let draftTimer;
-  new MutationObserver(()=>{APP.inert=Boolean(MODAL.firstElementChild);}).observe(MODAL,{childList:true});
+  let visionViewer=null;
+  new MutationObserver(()=>{if(visionViewer&&!MODAL.querySelector('.vision-viewer'))closeVisionViewer(false,false);APP.inert=Boolean(MODAL.firstElementChild);}).observe(MODAL,{childList:true});
   function routeFromHash(){try{const parts=location.hash.replace(/^#\/?/,'').split('/').filter(Boolean).map(part=>decodeURIComponent(part));return {page:parts[0]||'today',id:parts[1]||''};}catch{return {page:'today',id:''};}}
-  function go(page,id='',preserveDate=false){if(page==='today'&&!preserveDate)selectedDate=localDate();if(page==='calendar'&&currentRoute.page!=='calendar')calendarMonth=monthKey(selectedDate);location.hash=`#/${page}${id?`/${encodeURIComponent(id)}`:''}`;currentRoute=routeFromHash();MODAL.innerHTML='';render();window.scrollTo({top:0,behavior:'instant'});}
+  function go(page,id='',preserveDate=false){closeVisionViewer(false);if(page==='today'&&!preserveDate)selectedDate=localDate();if(page==='calendar'&&currentRoute.page!=='calendar')calendarMonth=monthKey(selectedDate);location.hash=`#/${page}${id?`/${encodeURIComponent(id)}`:''}`;currentRoute=routeFromHash();MODAL.innerHTML='';render();window.scrollTo({top:0,behavior:'instant'});}
   function toast(message,error=false){TOAST.innerHTML=`<div class="toast${error?' error':''}" role="status">${esc(message)}</div>`;clearTimeout(toastTimer);toastTimer=setTimeout(()=>TOAST.innerHTML='',4000);}
   function commit(message='Saved in this browser'){
     try{state=saveState(state);render();toast(message);return true;}
@@ -200,12 +201,13 @@ async function appMain() {
   function suggestedActions(){const energy=state.days[selectedDate]?.energy;return state.actions.filter(a=>!a.done&&(!a.deadline||a.deadline<=selectedDate)).sort((a,b)=>{const ad=a.deadline&&a.deadline<=selectedDate?1:0,bd=b.deadline&&b.deadline<=selectedDate?1:0,am=a.energy===energy?1:0,bm=b.energy===energy?1:0;return bd-ad||bm-am||actionSort(a,b)||a.minutes-b.minutes;});}
   function actionRow(a,compact=false){return `<div class="list-row action-row" data-record-id="${attr(a.id)}" tabindex="-1"><input type="checkbox" data-toggle-action="${attr(a.id)}" aria-label="${a.done?'Reopen':'Complete'} ${attr(a.title)}" ${a.done?'checked':''}><div class="row-copy"><strong class="${a.done?'done':''}">${esc(a.title)}</strong>${compact?'':`<small>${esc(a.minutes)} min · ${esc(a.energy)} energy${a.deadline?` · ${fmtDate(a.deadline)}${a.dueTime?` at ${esc(a.dueTime)}`:''}`:''}</small>`}</div>${compact?'':`<button class="icon-btn" data-act="edit-action" data-id="${attr(a.id)}" aria-label="Edit ${attr(a.title)}">${icon('edit',16)}</button><button class="icon-btn" data-act="delete-action" data-id="${attr(a.id)}" aria-label="Delete ${attr(a.title)}">${icon('trash',16)}</button>`}</div>`;}
   function habitMatrix(compact=false){const dates=weekDates(habitWeek),habits=state.habits.filter(h=>h.active!==false);if(!habits.length)return empty('A gentle rhythm starts here','Add up to eight practices you want to return to.','Add a habit','new-habit');return `<table class="habit-table"><thead><tr><th scope="col"></th>${dates.map(d=>`<th scope="col" title="${fmtDate(d)}">${new Intl.DateTimeFormat('en',{weekday:'narrow'}).format(new Date(`${d}T12:00:00`))}</th>`).join('')}</tr></thead><tbody>${habits.map(h=>`<tr><td>${esc(h.title)}</td>${dates.map(d=>`<td><button class="habit-dot ${h.completions?.[d]?'done':''}" data-toggle-habit="${attr(h.id)}" data-date="${d}" aria-label="${h.completions?.[d]?'Clear':'Mark'} ${attr(h.title)} on ${fmtDate(d)}" aria-pressed="${!!h.completions?.[d]}"></button></td>`).join('')}</tr>`).join('')}</tbody></table>${compact?'':`<p class="small-note">Tap a day to mark a practice. This week: ${stats(state).habitsPercent}% complete.</p>`}`;}
+  function visionImageButton(item){return `<button type="button" class="vision-image-button" data-open-vision="${attr(item.id)}" aria-label="View ${attr(item.title||'vision image')} larger"><img src="${attr(item.image)}" alt="${attr(item.title||'Vision Board image')}" loading="lazy"><span class="vision-image-hint" aria-hidden="true">${icon('search',16)}</span></button>`;}
   function renderToday(){
     const s=stats(state),d=state.days[selectedDate]||{},manifestations=state.manifestations.slice(0,4),viewingToday=selectedDate===localDate();
     const todayActions=state.actions.filter(a=>!a.done&&(viewingToday?(a.deadline?a.deadline<=selectedDate:a.period==='today'):a.deadline===selectedDate)).sort(actionSort).slice(0,5);
     const vision=state.visionBoard.slice(0,5);
     const goalRows=manifestations.length?manifestations.map((m,i)=>`<div class="list-row goal-row"><div class="list-thumb goal-thumb color-${i%4}">${icon(['target','leaf','sun','spark'][i%4],22)}</div><div class="row-copy"><strong>${esc(m.title)}</strong><small>${esc(m.category||'Personal Growth')}</small></div><div class="progress-track" aria-label="${pct(s.projectProgress[m.id])}% progress"><span style="--progress:${pct(s.projectProgress[m.id])}%"></span></div><span class="progress-number">${pct(s.projectProgress[m.id])}%</span></div>`).join(''):empty('Begin with one dream','Give a wish a name, a reason, and a first small step.','New manifestation','new-manifestation');
-    const visionStrip=vision.length?vision.map(v=>`<div class="vision-cell">${v.image?`<img src="${attr(v.image)}" alt="${attr(v.title)}">`:`<div class="text-tile">${esc(v.title)}</div>`}</div>`).join(''):`<div class="text-tile">I am becoming</div><img src="assets/hero-sunset.png" alt="Sunset coast inspiration"><div class="text-tile">Dream · Plan · Do</div><img src="assets/botanical-still.png" alt="Botanical inspiration"><div class="text-tile">One step today ♡</div>`;
+    const visionStrip=vision.length?vision.map(v=>`<div class="vision-cell">${v.image?visionImageButton(v):`<div class="text-tile">${esc(v.title)}</div>`}</div>`).join(''):`<div class="text-tile">I am becoming</div><img src="assets/hero-sunset.png" alt="Sunset coast inspiration"><div class="text-tile">Dream · Plan · Do</div><img src="assets/botanical-still.png" alt="Botanical inspiration"><div class="text-tile">One step today ♡</div>`;
     const topThree=state.actions.filter(a=>!a.done&&(a.deadline?a.deadline===selectedDate:viewingToday&&(a.period==='today'||a.period==='week'))).sort(actionSort).slice(0,3);
     return `<div class="hero-grid"><section class="hero">${appearanceMode()==='sculpted'?'<span class="sculpted-scene" aria-hidden="true"><i class="sculpted-arch"></i><i class="sculpted-orb"></i><i class="sculpted-leaf"></i></span>':''}<div class="hero-content"><h1>Your Dreams<br>Deserve a Plan</h1><p>Manifest the life you love — with inspired action.</p><button class="btn btn-primary hero-button" data-act="new-manifestation">${icon('plus',17)} New Manifestation</button></div><div class="hero-script">Big dreams<br>Small steps<br>Real change<br>♥</div></section><aside class="quote-card"><blockquote>The life you want is on the other side of consistent action.</blockquote><cite>A gentle reminder</cite></aside></div>
     <div class="feature-grid"><button class="feature-tile" data-go="vision"><span class="feature-icon">${icon('target',34)}</span><span class="feature-copy"><strong>Visualize</strong><small>Get clear on what you want</small></span></button><button class="feature-tile" data-go="manifestations"><span class="feature-icon">${icon('leaf',34)}</span><span class="feature-copy"><strong>Plan</strong><small>Break it down into steps</small></span></button><button class="feature-tile" data-go="actions"><span class="feature-icon">${icon('bolt',34)}</span><span class="feature-copy"><strong>Take Action</strong><small>Do the next right thing</small></span></button><button class="feature-tile" data-go="progress"><span class="feature-icon">${icon('chart',34)}</span><span class="feature-copy"><strong>Track &amp; Grow</strong><small>Celebrate your progress</small></span></button></div>
@@ -259,7 +261,7 @@ async function appMain() {
       ${panel('The vision',`<dl class="detail-list"><dt>What do I want?</dt><dd>${esc(m.want||'—')}</dd><dt>Why does this matter?</dt><dd>${esc(m.why||'—')}</dd><dt>Desired date</dt><dd>${fmtDate(m.targetDate)}</dd><dt>How will I know?</dt><dd>${esc(m.measure||'—')}</dd><dt>Future self</dt><dd>${esc(m.futureSelf||'—')}</dd></dl>`)}
       ${panel('Milestones',`${m.milestones.length?m.milestones.map(ms=>`<div class="list-row"><input type="checkbox" data-toggle-milestone="${attr(ms.id)}" data-id="${attr(id)}" ${ms.done?'checked':''} aria-label="Complete ${attr(ms.title)}"><div class="row-copy"><strong class="${ms.done?'done':''}">${esc(ms.title)}</strong></div></div>`).join(''):empty('Map the middle','Milestones bridge the dream and today’s next step.')}<button class="link-add" data-act="new-milestone" data-id="${attr(id)}">${icon('plus',16)} Add milestone</button>`)}
       ${panel('Action steps',`${related.length?related.map(a=>actionRow(a)).join(''):empty('Make it real','Add a 5, 15, or 30 minute action.')}<button class="link-add" data-act="new-action" data-manifestation="${attr(id)}">${icon('plus',16)} Add action</button>`)}
-      ${panel('Images & affirmations',`<div class="vision-strip small">${images.map(v=>`<img src="${attr(v.image)}" alt="${attr(v.title)}">`).join('')}</div>${affs.length?affs.map(a=>`<p class="affirmation-line">“${esc(a.text)}”</p>`).join(''):'<p class="muted">Add imagery and affirmations to keep this vision close.</p>'}<div class="chip-row"><button class="btn btn-quiet" data-act="new-vision" data-manifestation="${attr(id)}">Add image</button><button class="btn btn-quiet" data-act="new-affirmation" data-manifestation="${attr(id)}">Add affirmation</button></div>`)}
+      ${panel('Images & affirmations',`<div class="vision-strip small">${images.map(v=>v.image?visionImageButton(v):`<div class="text-tile">${esc(v.title)}</div>`).join('')}</div>${affs.length?affs.map(a=>`<p class="affirmation-line">“${esc(a.text)}”</p>`).join(''):'<p class="muted">Add imagery and affirmations to keep this vision close.</p>'}<div class="chip-row"><button class="btn btn-quiet" data-act="new-vision" data-manifestation="${attr(id)}">Add image</button><button class="btn btn-quiet" data-act="new-affirmation" data-manifestation="${attr(id)}">Add affirmation</button></div>`)}
       <div class="full card-foot"><button class="btn" data-act="toggle-manifestation" data-id="${attr(id)}">${m.status==='completed'?'Reopen manifestation':'Mark manifestation complete'}</button><button class="btn btn-danger" data-act="delete-manifestation" data-id="${attr(id)}">${icon('trash',16)} Delete project</button></div></div>`;
   }
   function stickerLibrary(){
@@ -267,7 +269,7 @@ async function appMain() {
   }
   function renderVision(){
     const items=state.visionBoard,visible=items.filter(v=>visionFilter==='All'||v.category===visionFilter);
-    return `${pageHead('See it clearly','Vision Board','Collect images and words for the life you are building. Choose a category for every piece.',`<button class="btn btn-primary" data-act="new-vision">${icon('plus',16)} Add to board</button>`)}<div class="chip-row category-row">${['All',...CATEGORIES].map(c=>`<button class="chip ${visionFilter===c?'selected':''}" data-vision-filter="${attr(c)}">${c}</button>`).join('')}</div>${visible.length?`<div class="vision-board-grid">${visible.map(v=>`<article class="vision-card">${v.image?`<img src="${attr(v.image)}" alt="${attr(v.title)}">`:`<div class="vision-words">${esc(v.title)}</div>`}<div><strong>${esc(v.title)}</strong><small>${esc(v.category)}</small><button class="icon-btn" data-act="delete-vision" data-id="${attr(v.id)}" aria-label="Remove ${attr(v.title)}">${icon('trash',16)}</button></div></article>`).join('')}</div>`:panel('Your board',empty('A place for your images','Upload meaningful photos or add a word card. Everything stays in this browser.','Add your first piece','new-vision'))}${stickerLibrary()}`;
+    return `${pageHead('See it clearly','Vision Board','Collect images and words for the life you are building. Choose a category for every piece.',`<button class="btn btn-primary" data-act="new-vision">${icon('plus',16)} Add to board</button>`)}<div class="chip-row category-row">${['All',...CATEGORIES].map(c=>`<button class="chip ${visionFilter===c?'selected':''}" data-vision-filter="${attr(c)}">${c}</button>`).join('')}</div>${visible.length?`<div class="vision-board-grid">${visible.map(v=>`<article class="vision-card">${v.image?visionImageButton(v):`<div class="vision-words">${esc(v.title)}</div>`}<div><strong>${esc(v.title)}</strong><small>${esc(v.category)}</small><button class="icon-btn" data-act="delete-vision" data-id="${attr(v.id)}" aria-label="Remove ${attr(v.title)}">${icon('trash',16)}</button></div></article>`).join('')}</div>`:panel('Your board',empty('A place for your images','Upload meaningful photos or add a word card. Everything stays in this browser.','Add your first piece','new-vision'))}${stickerLibrary()}`;
   }
   function calendarHasDailyContent(day){
     if(!day)return false;
@@ -423,7 +425,96 @@ async function appMain() {
   function field(label,name,value='',type='text',opts=''){return `<label class="field">${label}<input name="${name}" type="${type}" value="${attr(value)}" ${opts}></label>`;}
   function textField(label,name,value='',placeholder=''){return `<label class="field">${label}<textarea name="${name}" placeholder="${attr(placeholder)}">${esc(value)}</textarea></label>`;}
   function selectField(label,name,options,value=''){return `<label class="field">${label}<select name="${name}">${options.map(([val,lab])=>`<option value="${attr(val)}" ${value===val?'selected':''}>${esc(lab)}</option>`).join('')}</select></label>`;}
-  function dialog(title,body,form='',submit='Save'){MODAL.innerHTML=`<div class="modal-backdrop" data-dismiss="true"><div class="modal-card" role="dialog" aria-modal="true" aria-label="${attr(title)}"><div class="modal-head"><h2>${title}</h2><button data-act="close-modal" aria-label="Close">${icon('close',18)}</button></div>${form?`<form data-form="${form}">${body}<div class="form-actions"><button type="button" class="btn" data-act="close-modal">Cancel</button><button type="submit" class="btn btn-primary">${submit}</button></div></form>`:body}</div></div>`;MODAL.querySelectorAll('textarea').forEach(field=>field.classList.add('writing-input'));MODAL.querySelector('input:not([type="hidden"]),textarea,select,button')?.focus();}
+  function closeVisionViewer(restoreFocus=true,clearModal=true){
+    if(!visionViewer)return;
+    const viewer=visionViewer;visionViewer=null;
+    viewer.abort.abort();viewer.resize?.disconnect();
+    for(const id of viewer.pointers.keys()){try{viewer.stage.releasePointerCapture(id);}catch{}}
+    for(const [property,value] of Object.entries(viewer.bodyStyle))document.body.style[property]=value;
+    document.body.classList.remove('vision-viewer-open');
+    if(clearModal)MODAL.innerHTML='';
+    APP.inert=Boolean(MODAL.firstElementChild);
+    window.scrollTo({left:viewer.scrollX,top:viewer.scrollY,behavior:'instant'});
+    if(restoreFocus&&viewer.opener?.isConnected&&!APP.inert)viewer.opener.focus({preventScroll:true});
+  }
+  function paintVisionViewer(viewer){
+    if(visionViewer!==viewer||!viewer.ready)return;
+    const maxX=Math.max(0,(viewer.fitWidth*viewer.zoom-viewer.stage.clientWidth)/2),maxY=Math.max(0,(viewer.fitHeight*viewer.zoom-viewer.stage.clientHeight)/2);
+    viewer.x=Math.max(-maxX,Math.min(maxX,viewer.x));viewer.y=Math.max(-maxY,Math.min(maxY,viewer.y));
+    Object.assign(viewer.image.style,{width:`${viewer.fitWidth}px`,height:`${viewer.fitHeight}px`,transform:`translate(-50%, -50%) translate(${viewer.x}px, ${viewer.y}px) scale(${viewer.zoom})`});
+    viewer.stage.dataset.zoomed=String(viewer.zoom>1);
+    viewer.dialog.querySelector('[data-vision-zoom-level]').textContent=`${Math.round(viewer.zoom*100)}%`;
+    viewer.dialog.querySelector('[data-vision-zoom="out"]').disabled=viewer.zoom<=1;
+    viewer.dialog.querySelector('[data-vision-zoom="in"]').disabled=viewer.zoom>=4;
+    viewer.dialog.querySelector('[data-vision-zoom="reset"]').disabled=false;
+  }
+  function fitVisionImage(viewer){
+    if(visionViewer!==viewer||!viewer.image.naturalWidth)return;
+    const scale=Math.min(1,viewer.stage.clientWidth/viewer.image.naturalWidth,viewer.stage.clientHeight/viewer.image.naturalHeight);
+    viewer.fitWidth=viewer.image.naturalWidth*scale;viewer.fitHeight=viewer.image.naturalHeight*scale;viewer.ready=true;
+    viewer.image.hidden=false;viewer.dialog.querySelector('.vision-viewer-loading').hidden=true;
+    paintVisionViewer(viewer);
+  }
+  function zoomVisionImage(value,anchor){
+    const viewer=visionViewer;if(!viewer?.ready)return;
+    const next=Math.max(1,Math.min(4,value)),ratio=next/viewer.zoom;
+    viewer.x=anchor?anchor.x-(anchor.x-viewer.x)*ratio:viewer.x*ratio;
+    viewer.y=anchor?anchor.y-(anchor.y-viewer.y)*ratio:viewer.y*ratio;
+    viewer.zoom=next;if(next===1){viewer.x=0;viewer.y=0;}
+    paintVisionViewer(viewer);
+  }
+  function visionViewerKeys(event){
+    const viewer=visionViewer;if(!viewer)return;
+    if(event.key==='Escape'){event.preventDefault();closeVisionViewer();return;}
+    if(event.key==='Tab'){
+      const focusable=[...viewer.dialog.querySelectorAll('button:not([disabled]),[tabindex="0"]')],first=focusable[0],last=focusable.at(-1),active=document.activeElement;
+      if(!focusable.includes(active)||(event.shiftKey&&active===first)||(!event.shiftKey&&active===last)){event.preventDefault();(event.shiftKey?last:first)?.focus();}
+      return;
+    }
+    if(event.target!==viewer.stage)return;
+    if(['+','=','-','0'].includes(event.key)){event.preventDefault();zoomVisionImage(event.key==='0'?1:viewer.zoom+(event.key==='-'?-.5:.5));return;}
+    if(viewer.zoom>1&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){event.preventDefault();viewer.x+=event.key==='ArrowLeft'?60:event.key==='ArrowRight'?-60:0;viewer.y+=event.key==='ArrowUp'?60:event.key==='ArrowDown'?-60:0;paintVisionViewer(viewer);}
+  }
+  function openVisionViewer(id,opener){
+    const item=state.visionBoard.find(piece=>piece.id===id);if(!item?.image)return;
+    closeVisionViewer(false);
+    clearTimeout(toastTimer);TOAST.innerHTML='';
+    const title=item.title||'Your vision';
+    MODAL.innerHTML=`<div class="modal-backdrop vision-viewer-backdrop"><section class="vision-viewer" role="dialog" aria-modal="true" aria-labelledby="vision-viewer-title" aria-describedby="vision-viewer-help"><header class="vision-viewer-head"><div><span class="eyebrow">Vision Board</span><h2 id="vision-viewer-title">${esc(title)}</h2><p>${esc(item.category||'Your inspiration')}</p></div><button type="button" class="btn vision-viewer-close" data-act="close-vision-viewer" aria-label="Close image viewer">${icon('close',20)}</button></header><div class="vision-viewer-stage" role="region" tabindex="0" aria-label="Image view. Use plus, minus, or zero to zoom. Arrow keys move a zoomed image."><img class="vision-viewer-image" src="${attr(item.image)}" alt="${attr(title)}" draggable="false" hidden><p class="vision-viewer-status vision-viewer-loading" role="status">Loading your image…</p><p class="vision-viewer-status vision-viewer-error" role="status" hidden>This image could not be opened. Try adding it to your board again.</p></div><footer class="vision-viewer-footer"><div class="vision-viewer-controls" aria-label="Image zoom controls"><button type="button" class="btn" data-vision-zoom="out" aria-label="Zoom out" disabled>−</button><output data-vision-zoom-level aria-live="polite" aria-label="Zoom level">100%</output><button type="button" class="btn" data-vision-zoom="in" aria-label="Zoom in" disabled>+</button><button type="button" class="btn" data-vision-zoom="reset" disabled>Fit</button></div><p id="vision-viewer-help">Pinch or use + / − to zoom. Drag to explore; Fit shows the whole image.</p></footer></section></div>`;
+    const dialog=MODAL.querySelector('.vision-viewer'),stage=dialog.querySelector('.vision-viewer-stage'),image=dialog.querySelector('img');
+    const bodyStyle=Object.fromEntries(['position','top','left','width','overflow','paddingRight'].map(property=>[property,document.body.style[property]]));
+    const viewer=visionViewer={dialog,stage,image,opener,bodyStyle,scrollX:window.scrollX,scrollY:window.scrollY,abort:new AbortController(),pointers:new Map(),gesture:null,zoom:1,x:0,y:0,ready:false,fitWidth:0,fitHeight:0};
+    const scrollbar=Math.max(0,innerWidth-document.documentElement.clientWidth),padding=parseFloat(getComputedStyle(document.body).paddingRight)||0;
+    Object.assign(document.body.style,{position:'fixed',top:`-${viewer.scrollY}px`,left:`-${viewer.scrollX}px`,width:'100%',overflow:'hidden',paddingRight:`${padding+scrollbar}px`});
+    document.body.classList.add('vision-viewer-open');APP.inert=true;
+    const options={signal:viewer.abort.signal};
+    image.addEventListener('load',()=>fitVisionImage(viewer),options);
+    const failed=()=>{if(visionViewer!==viewer)return;dialog.querySelector('.vision-viewer-loading').hidden=true;dialog.querySelector('.vision-viewer-error').hidden=false;};
+    image.addEventListener('error',failed,options);
+    const point=event=>({x:event.clientX,y:event.clientY});
+    const beginGesture=()=>{
+      const points=[...viewer.pointers.values()],rect=stage.getBoundingClientRect();
+      if(points.length>=2){const [a,b]=points;viewer.gesture={type:'pinch',distance:Math.max(1,Math.hypot(b.x-a.x,b.y-a.y)),zoom:viewer.zoom,x:viewer.x,y:viewer.y,midX:(a.x+b.x)/2-rect.left-rect.width/2,midY:(a.y+b.y)/2-rect.top-rect.height/2};}
+      else if(points.length===1)viewer.gesture={type:'pan',point:points[0],x:viewer.x,y:viewer.y};
+      else viewer.gesture=null;
+    };
+    stage.addEventListener('pointerdown',event=>{if(!viewer.ready||event.button!==0)return;viewer.pointers.set(event.pointerId,point(event));try{stage.setPointerCapture(event.pointerId);}catch{}beginGesture();},options);
+    stage.addEventListener('pointermove',event=>{
+      if(!viewer.pointers.has(event.pointerId)||!viewer.gesture)return;
+      viewer.pointers.set(event.pointerId,point(event));const gesture=viewer.gesture,points=[...viewer.pointers.values()];
+      if(gesture.type==='pinch'&&points.length>=2){const [a,b]=points,rect=stage.getBoundingClientRect(),zoom=Math.max(1,Math.min(4,gesture.zoom*Math.hypot(b.x-a.x,b.y-a.y)/gesture.distance)),ratio=zoom/gesture.zoom;viewer.x=(a.x+b.x)/2-rect.left-rect.width/2-(gesture.midX-gesture.x)*ratio;viewer.y=(a.y+b.y)/2-rect.top-rect.height/2-(gesture.midY-gesture.y)*ratio;viewer.zoom=zoom;}
+      else if(viewer.zoom>1){viewer.x=gesture.x+points[0].x-gesture.point.x;viewer.y=gesture.y+points[0].y-gesture.point.y;}
+      paintVisionViewer(viewer);
+    },options);
+    const endPointer=event=>{viewer.pointers.delete(event.pointerId);beginGesture();};
+    stage.addEventListener('pointerup',endPointer,options);stage.addEventListener('pointercancel',endPointer,options);stage.addEventListener('lostpointercapture',endPointer,options);
+    stage.addEventListener('dblclick',event=>{const rect=stage.getBoundingClientRect();zoomVisionImage(viewer.zoom>1?1:2,{x:event.clientX-rect.left-rect.width/2,y:event.clientY-rect.top-rect.height/2});},options);
+    stage.addEventListener('wheel',event=>{if(!event.ctrlKey)return;event.preventDefault();const rect=stage.getBoundingClientRect();zoomVisionImage(viewer.zoom*Math.exp(-event.deltaY*.005),{x:event.clientX-rect.left-rect.width/2,y:event.clientY-rect.top-rect.height/2});},{...options,passive:false});
+    viewer.resize=new ResizeObserver(()=>fitVisionImage(viewer));viewer.resize.observe(stage);
+    if(image.complete){if(image.naturalWidth)fitVisionImage(viewer);else failed();}
+    dialog.querySelector('.vision-viewer-close').focus({preventScroll:true});
+  }
+  function dialog(title,body,form='',submit='Save'){closeVisionViewer(false);MODAL.innerHTML=`<div class="modal-backdrop" data-dismiss="true"><div class="modal-card" role="dialog" aria-modal="true" aria-label="${attr(title)}"><div class="modal-head"><h2>${title}</h2><button data-act="close-modal" aria-label="Close">${icon('close',18)}</button></div>${form?`<form data-form="${form}">${body}<div class="form-actions"><button type="button" class="btn" data-act="close-modal">Cancel</button><button type="submit" class="btn btn-primary">${submit}</button></div></form>`:body}</div></div>`;MODAL.querySelectorAll('textarea').forEach(field=>field.classList.add('writing-input'));MODAL.querySelector('input:not([type="hidden"]),textarea,select,button')?.focus();}
   function openForm(kind,id='',extra='',prefillTitle='',prefillDate=''){
     const m=state.manifestations.find(x=>x.id===id),a=state.actions.find(x=>x.id===id),j=state.journals.find(x=>x.id===id);
     if(kind==='manifestation'){dialog(m?'Edit Manifestation':'New Manifestation',`<input name="id" type="hidden" value="${attr(id)}"><div class="form-grid">${field('Name your manifestation *','title',m?.title,'text','required maxlength="100"')}${selectField('Category','category',CATEGORIES.map(x=>[x,x]),m?.category||'Personal Growth')}${textField('What do I want?','want',m?.want,'Describe the outcome clearly.')}${textField('Why does this matter?','why',m?.why,'Make the reason personal.')}${field('Desired date','targetDate',m?.targetDate,'date')}${field('How will I know it happened?','measure',m?.measure)}${textField('Future-self description','futureSelf',m?.futureSelf)}${field('90-day goal','goal90',m?.goal90)}${field('This week','thisWeek',m?.thisWeek)}</div>`,'manifestation',m?'Save changes':'Create manifestation');}
@@ -545,7 +636,8 @@ async function appMain() {
     if(act==='jump-writing'||act==='jump-menu'){APP.querySelector(act==='jump-writing'?'.appearance-writing':'.appearance-menu')?.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});return;}
     if(act==='menu'){APP.querySelector('.sidebar')?.classList.add('open');APP.querySelector('.sidebar-scrim').hidden=false;APP.querySelector('.mobile-menu')?.setAttribute('aria-expanded','true');APP.querySelector('.sidebar .nav-link')?.focus();return;}
     if(act==='close-menu'){APP.querySelector('.sidebar')?.classList.remove('open');APP.querySelector('.sidebar-scrim').hidden=true;APP.querySelector('.mobile-menu')?.setAttribute('aria-expanded','false');APP.querySelector('.mobile-menu')?.focus();return;}
-    if(act==='close-modal'){MODAL.innerHTML='';return;}
+    if(act==='close-vision-viewer'){closeVisionViewer();return;}
+    if(act==='close-modal'){if(visionViewer)closeVisionViewer();else MODAL.innerHTML='';return;}
     if(act==='profile')return openForm('profile');
     if(act==='mobile-search')return dialog('Search your space','<form id="mobile-search-form" role="search"><label class="field">Search all saved records<input type="search" aria-label="Search all saved records" placeholder="Search goals, actions, journal…" required autofocus></label><div class="form-actions"><button class="btn btn-primary" type="submit">Search</button></div></form>');
     if(act==='notification')return dialog("Today's gentle reminder",`<p>Manifest it. Break it down. Take one step today.</p><p class="muted">Your private planner has ${state.actions.filter(a=>!a.done&&a.period==='today').length} action(s) set for today.</p><button class="btn btn-primary" data-go="today">Open today</button>`);
@@ -606,6 +698,8 @@ async function appMain() {
   }
   document.addEventListener('click',async event=>{
     const target=event.target.closest('button,a,[data-detail],[data-toggle-action],[data-toggle-milestone]');if(!target)return;
+    if(target.dataset.openVision){openVisionViewer(target.dataset.openVision,target);return;}
+    if(target.dataset.visionZoom){const mode=target.dataset.visionZoom;zoomVisionImage(mode==='reset'?1:(visionViewer?.zoom||1)+(mode==='in'?.5:-.5));return;}
     if(target.dataset.calendarDate){selectedDate=target.dataset.calendarDate;calendarMonth=monthKey(selectedDate);render();return;}
     if(target.dataset.nav){event.preventDefault();go(target.dataset.nav);return;}
     if(target.dataset.go){event.preventDefault();go(target.dataset.go);return;}
@@ -645,7 +739,7 @@ async function appMain() {
       },50);
       return;
     }
-    if(event.target.matches('.modal-backdrop'))MODAL.innerHTML='';
+    if(event.target.matches('.modal-backdrop')){if(visionViewer)closeVisionViewer();else MODAL.innerHTML='';}
   });
   function saveDraft(el){
     const date=selectedDate;
@@ -718,9 +812,10 @@ async function appMain() {
     if(el.dataset.theme==='extraCalm'){state.theme.extraCalm=el.checked;commit('Theme saved');return;}
     if(el.id==='restore-file'){const file=el.files?.[0];if(!file)return;const parsed=validateBackup(await file.text());el.value='';if(!parsed.ok)return toast(parsed.error,true);if(!confirm('Replace this browser’s planner data with the selected backup?'))return;state=parsed.state;selectedDate=localDate();calendarMonth=monthKey(selectedDate);commit('Backup restored');go('today');return;}
   });
-  document.addEventListener('keydown',event=>{if(event.key==='Escape'){MODAL.innerHTML='';const sidebar=APP.querySelector('.sidebar');const wasOpen=sidebar?.classList.contains('open');sidebar?.classList.remove('open');const scrim=APP.querySelector('.sidebar-scrim');if(scrim)scrim.hidden=true;APP.querySelector('.mobile-menu')?.setAttribute('aria-expanded','false');if(wasOpen)APP.querySelector('.mobile-menu')?.focus();}});
+  document.addEventListener('keydown',event=>{if(visionViewer){visionViewerKeys(event);return;}if(event.key==='Escape'){MODAL.innerHTML='';const sidebar=APP.querySelector('.sidebar');const wasOpen=sidebar?.classList.contains('open');sidebar?.classList.remove('open');const scrim=APP.querySelector('.sidebar-scrim');if(scrim)scrim.hidden=true;APP.querySelector('.mobile-menu')?.setAttribute('aria-expanded','false');if(wasOpen)APP.querySelector('.mobile-menu')?.focus();}});
   window.addEventListener('pagehide',()=>{if(draftTimer){clearTimeout(draftTimer);draftTimer=null;persist();}});
-  window.addEventListener('hashchange',()=>{const previous=currentRoute.page;currentRoute=routeFromHash();if(currentRoute.page==='today'&&previous!=='today')selectedDate=localDate();if(currentRoute.page==='calendar'&&previous!=='calendar')calendarMonth=monthKey(selectedDate);render();});
+  window.addEventListener('hashchange',()=>{closeVisionViewer(false);const previous=currentRoute.page;currentRoute=routeFromHash();if(currentRoute.page==='today'&&previous!=='today')selectedDate=localDate();if(currentRoute.page==='calendar'&&previous!=='calendar')calendarMonth=monthKey(selectedDate);render();});
+  window.addEventListener('beforeprint',()=>closeVisionViewer(false));
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateLiveClock();});
   setInterval(updateLiveClock,1000);
   window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;});
