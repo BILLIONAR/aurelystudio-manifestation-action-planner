@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aurely-manifestation-action-v10-20260927';
+const CACHE_NAME = 'aurely-manifestation-action-v11-20260928';
 const FONT_WEIGHTS = {
   'cormorant-garamond': [400, 600, 700],
   'nunito-sans': [400, 600, 700],
@@ -26,9 +26,9 @@ const STICKERS = [
   'travel-suitcase'
 ];
 const APP_SHELL = [
-  './app.js?v=8',
-  './src/data.js?v=8',
-  './styles.css?v=8',
+  './app.js?v=9',
+  './src/data.js?v=9',
+  './styles.css?v=9',
   './manifest.webmanifest',
   './assets/logo.svg',
   './assets/hero-sunset.png',

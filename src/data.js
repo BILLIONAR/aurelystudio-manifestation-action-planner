@@ -14,6 +14,15 @@ const MS_PER_DAY = 86_400_000;
 const ACTIVE_ACTION_PERIODS = ['today', 'week', 'month', 'later'];
 const WRITING_FONTS = new Set(['nunito', 'lora', 'caveat', 'kalam', 'patrick', 'dancing', 'sacramento']);
 const MENU_STYLES = new Set(['sidebar', 'compact', 'top']);
+const APPEARANCES = new Set(['normal', 'glass', 'sculpted']);
+const DEFAULT_APPEARANCES = new Map([
+  ['soft-sanctuary', 'glass'],
+  ['rose-quartz', 'glass'],
+  ['lavender-haze', 'glass'],
+  ['blue-opal', 'glass'],
+  ['peach-aura', 'glass'],
+  ['porcelain-garden', 'sculpted'],
+]);
 
 export { STORAGE_KEY };
 
@@ -61,6 +70,7 @@ export function createInitialState() {
     theme: {
       preset: 'warm-sage',
       themeId: 'warm-sage',
+      appearance: 'normal',
       mainColor: '#53735c',
       accentColor: '#b88770',
       backgroundColor: '#fcf8f5',
@@ -278,6 +288,7 @@ function migrateState(value) {
   const base = createInitialState();
   const profile = asObject(source.profile);
   const theme = asObject(source.theme ?? source.themePrefs);
+  const themeId = asText(theme.themeId) || asText(theme.preset) || base.theme.themeId;
   const futureSelf = asObject(source.futureSelf);
   const journey = asObject(source.journey);
   return {
@@ -291,7 +302,8 @@ function migrateState(value) {
     theme: {
       ...base.theme,
       ...theme,
-      themeId: asText(theme.themeId) || asText(theme.preset) || base.theme.themeId,
+      themeId,
+      appearance: APPEARANCES.has(theme.appearance) ? theme.appearance : DEFAULT_APPEARANCES.get(themeId) || 'normal',
       writingFont: WRITING_FONTS.has(theme.writingFont) ? theme.writingFont : base.theme.writingFont,
       menuStyle: MENU_STYLES.has(theme.menuStyle) ? theme.menuStyle : base.theme.menuStyle,
     },
